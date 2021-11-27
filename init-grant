@@ -1,0 +1,18 @@
+#!/bin/bash
+
+if [ ! -f "/var/lib/grant" ]; then
+    mkdir "/var/lib/grant"
+fi
+if [ ! -f "/var/lib/grant/shared" ]; then
+    mkdir "/var/lib/grant/shared"
+fi
+if [ ! -f "/var/lib/grant/exclusive" ]; then
+    mkdir "/var/lib/grant/exclusive"
+fi
+
+chmod o+w "/var/lib/grant"
+chmod o+w "/var/lib/grant/shared"
+chmod o+w "/var/lib/grant/exclusive"
+chmod +t "/var/lib/grant"
+chmod +t "/var/lib/grant/shared"
+chmod +t "/var/lib/grant/exclusive"

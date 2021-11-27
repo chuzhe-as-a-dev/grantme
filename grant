@@ -1,0 +1,293 @@
+#!/bin/python3
+
+import argparse
+import re
+from os.path import isdir, join, isfile
+from os import listdir, remove, rename
+from getpass import getuser
+from datetime import datetime, timedelta
+from typing import final
+
+PROG = 'grant'
+USER = getuser()
+
+LATCH_FILE = '/run/lock/grant.lock'
+DATA_DIR = '/var/lib/grant'
+SDIR = join(DATA_DIR, 'shared')
+XDIR = join(DATA_DIR, 'exclusive')
+
+# copied from https://stackoverflow.com/a/287944
+HEADER = '\033[95m'
+OKBLUE = '\033[94m'
+OKCYAN = '\033[96m'
+OKGREEN = '\033[92m'
+WARNING = '\033[93m'
+FAIL = '\033[91m'
+BOLD = '\033[1m'
+UNDERLINE = '\033[4m'
+ENDC = '\033[0m'
+
+SLOCK_CMD = f'{BOLD}{PROG} --mode shared --duration ?d?h?m?s{ENDC}'
+XLOCK_CMD = f'{BOLD}{PROG} --mode exclusive --duration ?d?h?m?s{ENDC}'
+CRY = f'An error occurred, please contact the {PROG} maintainer.'
+
+EXPIRE_FORMAT = "%Y-%m-%d %H:%M:%S"
+DELTA_REGEX = re.compile(r'^((?P<weeks>[\.\d]+?)w)? *'
+                         r'^((?P<days>[\.\d]+?)d)? *'
+                         r'((?P<hours>[\.\d]+?)h)? *'
+                         r'((?P<minutes>[\.\d]+?)m)? *'
+                         r'((?P<seconds>[\.\d]+?)s?)?$')
+
+
+parser = argparse.ArgumentParser(
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    description=(
+        'This is a utility for "granting" exclusive/shared access to '
+        'machines. It is purely advisory in the sense that neither permissions '
+        'is necessarily required to access the host. Its purpose is to make you '
+        "aware of the presence of other active users so that you don't disrupt "
+        'their work.\n\n'
+        f'Use `{PROG} --mode {{exclusive,shared}} --duration 2h30m to obtain/prolong permission for 2 hours and 30 minutes.\n'
+        f'Use `{PROG} --revoke` to invalidate your granted permission.\n'
+        f"Use `{PROG} --revoke --user USER` to invalidate other users' granted permission.\n"
+        f"Use `{PROG} --status` to view permissions of yours and other users'."))
+parser.add_argument('--status', action='store_true')
+parser.add_argument(
+    '--mode', choices=['exclusive', 'shared'])
+parser.add_argument('--duration', default='30m',
+                    help=f'Expected aceess duration, formated as "?w?d?h?m?s". Default to "30m". You can rerun {PROG} to prolong permission.')
+parser.add_argument('--revoke', action='store_true')
+parser.add_argument(
+    '--user', default=USER, help="The user whose permissions should be revoked. Defaults to current the login user.")
+args = parser.parse_args()
+
+
+# copied from https://github.com/zeitgitter/zeitgitterd/blob/master/zeitgitter/deltat.py
+def parse_delta(delta_str):
+    """
+    Parse a time string e.g. '2h 13m' or '1.5d' into a timedelta object.
+    Based on Peter's answer at https://stackoverflow.com/a/51916936/2445204
+    and virhilo's answer at https://stackoverflow.com/a/4628148/851699
+    :param delta_str: A string identifying a duration, e.g. '2h13.5m'
+    :return datetime.timedelta: A datetime.timedelta object
+    """
+    parts = DELTA_REGEX.match(delta_str)
+    assert parts is not None, """Could not parse any time information from '{}'.
+    Examples of valid strings: '8h', '2d 8h 5m 2s', '2m4.3s'""".format(delta_str)
+    time_params = {name: float(param)
+                   for name, param in parts.groupdict().items() if param}
+    return timedelta(**time_params)
+
+
+def write_expire(path, expire):
+    with open(path, "w") as f:
+        f.write(datetime.strftime(expire, EXPIRE_FORMAT))
+
+
+# TODO: make it RAII
+def latch():
+    try:
+        f = open(LATCH_FILE, 'x')
+        f.write(USER)
+        f.close()
+        return True
+    except:
+        return False
+
+
+def unlatch():
+    try:
+        remove(LATCH_FILE)
+    except:
+        print(FAIL + f"Failed to unlatch." + ENDC)
+        print(CRY)
+
+
+def granted():
+    def get_expire(path):
+        with open(path, "r") as f:
+            return datetime.strptime(f.readline(), EXPIRE_FORMAT)
+
+    shares = {f: get_expire(join(SDIR, f)) for f in listdir(SDIR) if isfile(
+        join(SDIR, f)) and get_expire(join(SDIR, f)) > datetime.now()}
+    exclusive = [(f, get_expire(join(XDIR, f))) for f in listdir(XDIR) if isfile(
+        join(XDIR, f)) and get_expire(join(XDIR, f)) > datetime.now()]
+    assert(len(exclusive) <= 1)
+
+    return shares, exclusive
+
+
+def print_status():
+    shares, exclusive = granted()
+    if len(exclusive) > 0:
+        who = exclusive[0][0]
+        if exclusive[0][0] == USER:
+            who += " (YOU)"
+        print(f"Exclusive access is granted to " +
+              f"{BOLD}{OKGREEN}{who}{ENDC}" +
+              f", which expires at {BOLD}{OKGREEN}{exclusive[0][1]}{ENDC}.")
+        if exclusive[0][0] != USER:
+            print(
+                f"{WARNING}Please {BOLD}AVOID DEMANDING TASKS{ENDC}{WARNING}, so as to not disrupt others.{ENDC}")
+    elif len(shares) > 0:
+        last_expire = max(shares.values())
+        who = ", ".join(shares.keys())
+        if USER in shares.keys():
+            who = ", ".join([name if name != USER else
+                            name + " (YOU)" for name in shares.keys()])
+        print(f"Shared accesses are granted to " +
+              f"{BOLD}{OKCYAN}{who}{ENDC}" +
+              f", the last of which expires at {BOLD}{OKCYAN}{last_expire}{ENDC}.")
+        if USER not in shares.keys():
+            print(f"You can use `{SLOCK_CMD}` to obtain shared access.")
+    else:
+        print(
+            f"Neither exclusive nor shared access is not granted yet.")
+        print(f"You can use `{XLOCK_CMD}` to obtain exclusive access.")
+        print(f"You can use `{SLOCK_CMD}` to obtain shared access.")
+
+
+def revoke(who=USER):
+    if not latch():
+        print(
+            f"{FAIL}Another user is attempting to change permissions. Please retry again.{ENDC}")
+    else:
+        try:
+            shares, exclusive = granted()
+            if len(exclusive) > 0 and who == exclusive[0][0]:
+                try:
+                    remove(join(XDIR, who))
+                    print(
+                        f"{OKGREEN}{who}'s exclusive permission is successfully revoked.{ENDC}")
+                except:
+                    print(
+                        f"{FAIL}Failed to revoke {who}'s exclusive permission.{ENDC}")
+                    print(CRY)
+            elif who in shares.keys():
+                try:
+                    remove(join(SDIR, who))
+                    print(
+                        f"{OKGREEN}{who}'s shared permission is successfully revoked.{ENDC}")
+                except:
+                    print(
+                        f"{FAIL}Failed to revoke {who}'s shared permission.{ENDC}")
+                    print(CRY)
+            else:
+                print(
+                    f"{WARNING}{who} is not currently granted with any permission.{ENDC}")
+        finally:
+            unlatch()
+
+
+# cannot grant non-current-login users, because the file created would be owned
+# by the current login user
+def grant(mode, duration):
+    if not latch():
+        print(FAIL +
+              "Another user is attempting to change permissions. Please retry again." +
+              ENDC)
+    else:
+        try:
+            shares, exclusive = granted()
+            attempted_expire = datetime.now() + parse_delta(duration)
+
+            # if already locked, try prolong or upgrade
+            if len(exclusive) > 0 and USER == exclusive[0][0]:
+                if mode != "exclusive":
+                    print(
+                        f"{WARNING}{USER} already has an exclusive permission. Ignoring `--mode shared`.{ENDC}")
+
+                old_expire = exclusive[0][1]
+                if old_expire > attempted_expire:
+                    print(
+                        f"{WARNING}{USER} already has an exclusive permission that expires ({BOLD}{old_expire}{ENDC}{WARNING}) after the given duration. No change is made.{ENDC}")
+                else:
+                    try:
+                        write_expire(join(XDIR, USER), attempted_expire)
+                        print(
+                            f"{OKGREEN}{USER}'s exclusive permission is prolong to {attempted_expire}.{ENDC}")
+                    except:
+                        print(
+                            f"{FAIL}Failed to prolong {USER}'s exclusive permission.{ENDC}")
+                        print(CRY)
+            elif USER in shares:
+                # try upgrade first
+                path = join(SDIR, USER)
+                if mode == "exclusive":
+                    if len(shares) == 1:
+                        assert(len(exclusive) == 0)
+                        try:
+                            rename(path, join(XDIR, USER))
+                            path = join(XDIR, USER)
+                            print(
+                                f"{OKGREEN}{USER}'s shared permission upgraded to an exclusive permission.{ENDC}")
+                        except:
+                            print(
+                                f"{FAIL}Failed to upgrade {USER}'s shared permission.{ENDC}")
+                            print(CRY)
+                    else:
+                        print(
+                            f"{FAIL}Cannot upgrade to an exclusive permission because shared permissions are currently granted to other users. Skipping upgrade and attempting to prolong duration.{ENDC}")
+
+                # then prolong
+                old_expire = shares[USER]
+                if old_expire > attempted_expire:
+                    print(
+                        f"{WARNING}{USER} already has a permission that expires ({BOLD}{old_expire}{ENDC}{WARNING}) after the given duration. No change is made to the expiration time.{ENDC}")
+                else:
+                    try:
+                        write_expire(path, attempted_expire)
+                        print(
+                            f"{OKGREEN}{USER}'s permission is prolong to {attempted_expire}.{ENDC}")
+                    except:
+                        print(
+                            f"{FAIL}Failed to prolong {USER}'s permission.{ENDC}")
+                        print(CRY)
+            else:
+                if mode == "shared":
+                    # want shared
+                    if len(exclusive) == 0:
+                        try:
+                            write_expire(join(SDIR, USER), attempted_expire)
+                            print(
+                                f"{OKGREEN}{USER} is grated shared permission that expires at {attempted_expire}.{ENDC}")
+                        except:
+                            print(
+                                f"{FAIL}Failed to grant shared permission to {USER}.{ENDC}")
+                            print(CRY)
+                    else:
+                        print(
+                            f"{FAIL}Cannot grant shared permission because an exclusive permission is already granted to {exclusive[0][0]}.{ENDC}")
+                else:
+                    # want exclusive
+                    if len(shares) == 0 and len(exclusive) == 0:
+                        try:
+                            write_expire(join(XDIR, USER), attempted_expire)
+                            print(
+                                f"{OKGREEN}{USER} is grated an exclusive permission that expires at {attempted_expire}.{ENDC}")
+                        except:
+                            print(
+                                f"{FAIL}Failed to grant an exclusive permission to {USER}.{ENDC}")
+                            print(CRY)
+                    else:
+                        print(
+                            f"{FAIL}Cannot grant an exclusive permission because shared permissions are already granted.{ENDC}")
+        finally:
+            unlatch()
+
+
+if not isdir(DATA_DIR) or not isdir(SDIR) or not isdir(XDIR):
+    print(FAIL +
+          f'Data directory does not exist or is not complete.' +
+          ENDC)
+    print(CRY)
+    exit(1)
+
+if args.status:
+    print_status()
+elif args.revoke:
+    revoke(args.user)
+elif args.mode is not None:
+    grant(args.mode, args.duration)
+else:
+    parser.print_help()

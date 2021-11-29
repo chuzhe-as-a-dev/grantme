@@ -8,7 +8,7 @@ from getpass import getuser
 from datetime import datetime, timedelta
 from typing import final
 
-PROG = 'grant'
+PROG = 'grantme'
 USER = getuser()
 
 LATCH_FILE = '/run/lock/grant.lock'

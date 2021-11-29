@@ -10,9 +10,8 @@ if [ ! -f "/var/lib/grant/exclusive" ]; then
     mkdir "/var/lib/grant/exclusive"
 fi
 
-chmod o+w "/var/lib/grant"
+chmod o+x "/var/lib/grant"
 chmod o+w "/var/lib/grant/shared"
 chmod o+w "/var/lib/grant/exclusive"
-chmod +t "/var/lib/grant"
 chmod +t "/var/lib/grant/shared"
 chmod +t "/var/lib/grant/exclusive"

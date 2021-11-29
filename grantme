@@ -140,6 +140,8 @@ def print_status():
               f", the last of which expires at {BOLD}{OKCYAN}{last_expire}{ENDC}.")
         if USER not in shares.keys():
             print(f"You can use `{SLOCK_CMD}` to obtain shared access.")
+        else:
+            print(f"Your shared permission expires at {shares[USER]}.")
     else:
         print(
             f"Neither exclusive nor shared access is not granted yet.")

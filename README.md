@@ -37,11 +37,11 @@
 ## 安装、更新、删除脚本
 
 将本仓库clone到任意位置，在仓库根目录下运行`sudo sh install.sh`即可。
-该脚本会创建必须的锁信息存放目录（`/var/lib/grantme`），并将`grantme`本体`cp`至`/usr/local/bin/grantme`。
+该脚本会创建必须的锁信息存放目录（`/var/lib/grantme`），并将`grantme`本体hard link至`/usr/local/bin/grantme`。
 
-pull本仓库最新commit后，再次运行`sudo sh install.sh`即可覆盖上一版本。
+在仓库根目录下pull最新commit，即可完成更新（通过hard link）。
 
-删除`grantme`的痕迹需要手动运行`sudo rm -rf /var/lib/grantme /usr/local/bin/grantme`。
+在仓库根目录下运行`sudo sh uninstall.sh`即可删除脚本与相关文件。
 
 ## 原理解释
 

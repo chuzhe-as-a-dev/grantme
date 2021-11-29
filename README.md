@@ -23,7 +23,7 @@
 
 你可以通过`grantme --mode {shared,exclusive} [--duration ?d?h?m?s]`获得当前机器一定时间内的使用权限。不指定时常时，默认为30分钟。
 
-![manual-status-screenshot](screenshots/manual-status.png)
+![acquire-screenshot](screenshots/acquire.png)
 
 如上图所示，当只有本人持有共享权限时，再次调用`grantme --mode exclusive`自动将本人权限升级为独占权限。
 

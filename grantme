@@ -1,4 +1,4 @@
-#!/bin/python3
+#!python3
 
 import argparse
 import re
@@ -6,7 +6,6 @@ from os.path import isdir, join, isfile
 from os import listdir, remove, rename
 from getpass import getuser
 from datetime import datetime, timedelta
-from typing import final
 
 PROG = 'grantme'
 USER = getuser()

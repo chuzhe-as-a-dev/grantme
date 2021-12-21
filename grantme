@@ -117,6 +117,8 @@ def granted():
 
 
 def print_status():
+    print()
+    print(f"{HEADER}{'#'*80}{ENDC}")
     shares, exclusive = granted()
     if len(exclusive) > 0:
         who = exclusive[0][0]
@@ -146,6 +148,7 @@ def print_status():
             f"Neither exclusive nor shared access is not granted yet.")
         print(f"You can use `{XLOCK_CMD}` to obtain exclusive access.")
         print(f"You can use `{SLOCK_CMD}` to obtain shared access.")
+    print(f"{HEADER}{'#'*80}{ENDC}")
 
 
 def revoke(who=USER):

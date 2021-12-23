@@ -78,12 +78,10 @@ def unlatch():
     global err
     try:
         remove(LATCH_FILE)
-        return True
     except:
         print(FAIL + f"Failed to unlatch." + ENDC)
         print(CRY)
         err = ERR
-        return False
 
 
 def granted():

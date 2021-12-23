@@ -34,6 +34,26 @@
 你可以通过`grantme --revoke`释放自己的共享或独占权限。
 管理员可以通过`sudo grantme --revoke --user <USER>`释放指定用户的共享或独占权限。
 
+### 在脚本中使用
+
+请在脚本的开头拿锁，并在脚本的末尾放锁，示例代码如下：
+(注意：锁可能在脚本完成前失效，请再次检查你的运行结果或者为你的脚本申请足够的时间)
+```shell
+#!/bin/bash
+# Get lock
+./grantme -m exclusive -d 1h
+if [ $? -ne 0 ]
+then
+    echo "I can't get the lock, cry."
+    exit 1
+fi
+
+echo "I get the lock, I'm going to work."
+
+# Release lock
+./grantme -r 
+```
+
 ## 安装、更新、删除脚本
 
 将本仓库clone到任意位置，在仓库根目录下运行`sudo sh install.sh`即可。

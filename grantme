@@ -37,29 +37,9 @@ DELTA_REGEX = re.compile(r'^((?P<weeks>[\.\d]+?)w)? *'
                          r'((?P<minutes>[\.\d]+?)m)? *'
                          r'((?P<seconds>[\.\d]+?)s?)?$')
 
-
-parser = argparse.ArgumentParser(
-    formatter_class=argparse.RawDescriptionHelpFormatter,
-    description=(
-        'This is a utility for "granting" exclusive/shared access to '
-        'machines. It is purely advisory in the sense that neither permissions '
-        'is necessarily required to access the host. Its purpose is to make you '
-        "aware of the presence of other active users so that you don't disrupt "
-        'their work.\n\n'
-        f'Use `{PROG} --mode {{exclusive,shared}} --duration 2h30m to obtain/prolong permission for 2 hours and 30 minutes.\n'
-        f'Use `{PROG} --revoke` to invalidate your granted permission.\n'
-        f"Use `{PROG} --revoke --user USER` to invalidate other users' granted permission.\n"
-        f"Use `{PROG} --status` to view permissions of yours and other users'."))
-parser.add_argument('--status', action='store_true')
-parser.add_argument(
-    '--mode', choices=['exclusive', 'shared'])
-parser.add_argument('--duration', default='30m',
-                    help=f'Expected aceess duration, formated as "?w?d?h?m?s". Default to "30m". You can rerun {PROG} to prolong permission.')
-parser.add_argument('--revoke', action='store_true')
-parser.add_argument(
-    '--user', default=USER, help="The user whose permissions should be revoked. Defaults to current the login user.")
-args = parser.parse_args()
-
+# a global error flag
+ERR = 255
+err = 0
 
 # copied from https://github.com/zeitgitter/zeitgitterd/blob/master/zeitgitter/deltat.py
 def parse_delta(delta_str):
@@ -95,11 +75,13 @@ def latch():
 
 
 def unlatch():
+    global err
     try:
         remove(LATCH_FILE)
     except:
         print(FAIL + f"Failed to unlatch." + ENDC)
         print(CRY)
+        err = ERR
 
 
 def granted():
@@ -111,14 +93,14 @@ def granted():
         join(SDIR, f)) and get_expire(join(SDIR, f)) > datetime.now()}
     exclusive = [(f, get_expire(join(XDIR, f))) for f in listdir(XDIR) if isfile(
         join(XDIR, f)) and get_expire(join(XDIR, f)) > datetime.now()]
-    assert(len(exclusive) <= 1)
+    assert (len(exclusive) <= 1)
 
     return shares, exclusive
 
 
 def print_status():
     print()
-    print(f"{HEADER}{'#'*80}{ENDC}")
+    print(f"{HEADER}{'#' * 80}{ENDC}")
     shares, exclusive = granted()
     if len(exclusive) > 0:
         who = exclusive[0][0]
@@ -135,7 +117,7 @@ def print_status():
         who = ", ".join(shares.keys())
         if USER in shares.keys():
             who = ", ".join([name if name != USER else
-                            name + " (YOU)" for name in shares.keys()])
+                             name + " (YOU)" for name in shares.keys()])
         print(f"Shared accesses are granted to " +
               f"{BOLD}{OKCYAN}{who}{ENDC}" +
               f", the last of which expires at {BOLD}{OKCYAN}{last_expire}{ENDC}.")
@@ -148,13 +130,15 @@ def print_status():
             f"Neither exclusive nor shared access is not granted yet.")
         print(f"You can use `{XLOCK_CMD}` to obtain exclusive access.")
         print(f"You can use `{SLOCK_CMD}` to obtain shared access.")
-    print(f"{HEADER}{'#'*80}{ENDC}")
+    print(f"{HEADER}{'#' * 80}{ENDC}")
 
 
 def revoke(who=USER):
+    global err
     if not latch():
         print(
             f"{FAIL}Another user is attempting to change permissions. Please retry again.{ENDC}")
+        err = ERR
     else:
         try:
             shares, exclusive = granted()
@@ -167,6 +151,7 @@ def revoke(who=USER):
                     print(
                         f"{FAIL}Failed to revoke {who}'s exclusive permission.{ENDC}")
                     print(CRY)
+                    err = ERR
             elif who in shares.keys():
                 try:
                     remove(join(SDIR, who))
@@ -176,6 +161,7 @@ def revoke(who=USER):
                     print(
                         f"{FAIL}Failed to revoke {who}'s shared permission.{ENDC}")
                     print(CRY)
+                    err = ERR
             else:
                 print(
                     f"{WARNING}{who} is not currently granted with any permission.{ENDC}")
@@ -186,10 +172,12 @@ def revoke(who=USER):
 # cannot grant non-current-login users, because the file created would be owned
 # by the current login user
 def grant(mode, duration):
+    global err 
     if not latch():
         print(FAIL +
               "Another user is attempting to change permissions. Please retry again." +
               ENDC)
+        err = ERR
     else:
         try:
             shares, exclusive = granted()
@@ -214,12 +202,13 @@ def grant(mode, duration):
                         print(
                             f"{FAIL}Failed to prolong {USER}'s exclusive permission.{ENDC}")
                         print(CRY)
+                        err = ERR
             elif USER in shares:
                 # try upgrade first
                 path = join(SDIR, USER)
                 if mode == "exclusive":
                     if len(shares) == 1:
-                        assert(len(exclusive) == 0)
+                        assert (len(exclusive) == 0)
                         try:
                             rename(path, join(XDIR, USER))
                             path = join(XDIR, USER)
@@ -229,9 +218,11 @@ def grant(mode, duration):
                             print(
                                 f"{FAIL}Failed to upgrade {USER}'s shared permission.{ENDC}")
                             print(CRY)
+                            err = ERR
                     else:
                         print(
                             f"{FAIL}Cannot upgrade to an exclusive permission because shared permissions are currently granted to other users. Skipping upgrade and attempting to prolong duration.{ENDC}")
+                        err = ERR
 
                 # then prolong
                 old_expire = shares[USER]
@@ -247,6 +238,7 @@ def grant(mode, duration):
                         print(
                             f"{FAIL}Failed to prolong {USER}'s permission.{ENDC}")
                         print(CRY)
+                        err = ERR
             else:
                 if mode == "shared":
                     # want shared
@@ -259,9 +251,11 @@ def grant(mode, duration):
                             print(
                                 f"{FAIL}Failed to grant shared permission to {USER}.{ENDC}")
                             print(CRY)
+                            err = ERR
                     else:
                         print(
                             f"{FAIL}Cannot grant shared permission because an exclusive permission is already granted to {exclusive[0][0]}.{ENDC}")
+                        err = ERR
                 else:
                     # want exclusive
                     if len(shares) == 0 and len(exclusive) == 0:
@@ -273,25 +267,60 @@ def grant(mode, duration):
                             print(
                                 f"{FAIL}Failed to grant an exclusive permission to {USER}.{ENDC}")
                             print(CRY)
+                            err = ERR
                     else:
                         print(
                             f"{FAIL}Cannot grant an exclusive permission because shared permissions are already granted.{ENDC}")
+                        err = ERR
         finally:
             unlatch()
 
 
-if not isdir(DATA_DIR) or not isdir(SDIR) or not isdir(XDIR):
-    print(FAIL +
-          f'Data directory does not exist or is not complete.' +
-          ENDC)
-    print(CRY)
-    exit(1)
+def check_env():
+    if not isdir(DATA_DIR) or not isdir(SDIR) or not isdir(XDIR):
+        print(FAIL +
+              f'Data directory does not exist or is not complete.' +
+              ENDC)
+        print(CRY)
+        exit(-1)
 
-if args.status:
-    print_status()
-elif args.revoke:
-    revoke(args.user)
-elif args.mode is not None:
-    grant(args.mode, args.duration)
-else:
-    parser.print_help()
+
+def main():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            'This is a utility for "granting" exclusive/shared access to '
+            'machines. It is purely advisory in the sense that neither permissions '
+            'is necessarily required to access the host. Its purpose is to make you '
+            "aware of the presence of other active users so that you don't disrupt "
+            'their work.\n\n'
+            f'Use `{PROG} --mode {{exclusive,shared}} --duration 2h30m to obtain/prolong permission for 2 hours and 30 minutes.\n'
+            f'Use `{PROG} --revoke` to invalidate your granted permission.\n'
+            f"Use `{PROG} --revoke --user USER` to invalidate other users' granted permission.\n"
+            f"Use `{PROG} --status` to view permissions of yours and other users'."))
+    parser.add_argument('-s', '--status', action='store_true')
+    parser.add_argument(
+        '-m', '--mode', choices=['exclusive', 'shared'])
+    parser.add_argument('-d', '--duration', default='30m',
+                        help=f'Expected aceess duration, formated as "?w?d?h?m?s". Default to "30m". You can rerun {PROG} to prolong permission.')
+    parser.add_argument('-r', '--revoke', action='store_true')
+    parser.add_argument(
+        '-u', '--user', default=USER,
+        help="The user whose permissions should be revoked. Defaults to current the login user.")
+    args = parser.parse_args()
+
+    check_env()
+
+    if args.status:
+        print_status()
+    elif args.revoke:
+        revoke(args.user)
+    elif args.mode is not None:
+        grant(args.mode, args.duration)
+    else:
+        parser.print_help()
+    exit(err)
+
+
+if __name__ == '__main__':
+    main()

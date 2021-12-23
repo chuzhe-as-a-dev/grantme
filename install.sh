@@ -16,7 +16,7 @@ chmod o+w "/var/lib/grant/exclusive"
 chmod +t "/var/lib/grant/shared"
 chmod +t "/var/lib/grant/exclusive"
 
-ln grantme /usr/local/bin/grantme
+ln --symbolic "$PWD/grantme" /usr/local/bin/grantme
 cp 51-grantme-status /etc/update-motd.d/51-grantme-status
 
 chmod +x /usr/local/bin/grantme

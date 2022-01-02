@@ -15,6 +15,18 @@ DATA_DIR = '/var/lib/grant'
 SDIR = join(DATA_DIR, 'shared')
 XDIR = join(DATA_DIR, 'exclusive')
 
+EXPIRE_FORMAT = "%Y-%m-%d %H:%M:%S"
+DELTA_REGEX = re.compile(r'^((?P<weeks>[\.\d]+?)w)? *'
+                         r'^((?P<days>[\.\d]+?)d)? *'
+                         r'((?P<hours>[\.\d]+?)h)? *'
+                         r'((?P<minutes>[\.\d]+?)m)? *'
+                         r'((?P<seconds>[\.\d]+?)s?)?$')
+
+# a global error flag
+ERR = 255
+err = 0
+
+# Formatting codes
 # copied from https://stackoverflow.com/a/287944
 HEADER = '\033[95m'
 OKBLUE = '\033[94m'
@@ -29,17 +41,8 @@ ENDC = '\033[0m'
 SLOCK_CMD = f'{BOLD}{PROG} --mode shared --duration ?d?h?m?s{ENDC}'
 XLOCK_CMD = f'{BOLD}{PROG} --mode exclusive --duration ?d?h?m?s{ENDC}'
 CRY = f'An error occurred, please contact the {PROG} maintainer.'
+HEADER_LINE = f"{HEADER}{'#' * 80}{ENDC}"
 
-EXPIRE_FORMAT = "%Y-%m-%d %H:%M:%S"
-DELTA_REGEX = re.compile(r'^((?P<weeks>[\.\d]+?)w)? *'
-                         r'^((?P<days>[\.\d]+?)d)? *'
-                         r'((?P<hours>[\.\d]+?)h)? *'
-                         r'((?P<minutes>[\.\d]+?)m)? *'
-                         r'((?P<seconds>[\.\d]+?)s?)?$')
-
-# a global error flag
-ERR = 255
-err = 0
 
 # copied from https://github.com/zeitgitter/zeitgitterd/blob/master/zeitgitter/deltat.py
 def parse_delta(delta_str):
@@ -100,15 +103,15 @@ def granted():
 
 def print_status():
     print()
-    print(f"{HEADER}{'#' * 80}{ENDC}")
+    print(HEADER_LINE)
     shares, exclusive = granted()
     if len(exclusive) > 0:
         who = exclusive[0][0]
         if exclusive[0][0] == USER:
             who += " (YOU)"
-        print(f"Exclusive access is granted to " +
-              f"{BOLD}{OKGREEN}{who}{ENDC}" +
-              f", which expires at {BOLD}{OKGREEN}{exclusive[0][1]}{ENDC}.")
+        print(f"Exclusive access is granted to")
+        print(f"\t{BOLD}{OKGREEN}{who}{ENDC},")
+        print(f"which expires at {BOLD}{OKGREEN}{exclusive[0][1]}{ENDC}.")
         if exclusive[0][0] != USER:
             print(
                 f"{WARNING}Please {BOLD}AVOID DEMANDING TASKS{ENDC}{WARNING}, so as to not disrupt others.{ENDC}")
@@ -118,19 +121,23 @@ def print_status():
         if USER in shares.keys():
             who = ", ".join([name if name != USER else
                              name + " (YOU)" for name in shares.keys()])
-        print(f"Shared accesses are granted to " +
-              f"{BOLD}{OKCYAN}{who}{ENDC}" +
-              f", the last of which expires at {BOLD}{OKCYAN}{last_expire}{ENDC}.")
+        print(f"Shared accesses are granted to")
+        print(f"\t{BOLD}{OKCYAN}{who}{ENDC},")
+        print(
+            f"the last of which expires at {BOLD}{OKCYAN}{last_expire}{ENDC}.")
         if USER not in shares.keys():
-            print(f"You can use `{SLOCK_CMD}` to obtain shared access.")
+            print("You can obtain shared access with")
+            print(f"\t{SLOCK_CMD}")
         else:
             print(f"Your shared permission expires at {shares[USER]}.")
     else:
         print(
             f"Neither exclusive nor shared access is not granted yet.")
-        print(f"You can use `{XLOCK_CMD}` to obtain exclusive access.")
-        print(f"You can use `{SLOCK_CMD}` to obtain shared access.")
-    print(f"{HEADER}{'#' * 80}{ENDC}")
+        print("You can obtain exclusive access with")
+        print(f"\t{XLOCK_CMD}")
+        print("You can obtain shared access with")
+        print(f"\t{SLOCK_CMD}")
+    print(HEADER_LINE)
 
 
 def revoke(who=USER):
@@ -172,7 +179,7 @@ def revoke(who=USER):
 # cannot grant non-current-login users, because the file created would be owned
 # by the current login user
 def grant(mode, duration):
-    global err 
+    global err
     if not latch():
         print(FAIL +
               "Another user is attempting to change permissions. Please retry again." +

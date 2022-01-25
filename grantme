@@ -181,7 +181,7 @@ def grant(mode, duration):
         else:
             # want shared
             if mode == "shared":
-                if len(exclusive) == 0:
+                if exclusive is None:
                     write_expire(join(defs.SDIR, USER), attempted_expire)
                     utils.show_grant_ok(USER, mode)
                 else:

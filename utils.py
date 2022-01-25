@@ -9,7 +9,7 @@ class RuntimeErrorWithMessageAndCode(RuntimeError):
 
 
 def revoke_failure_msg(mode, who):
-    return f"Failed to revoke {who}'s {mode} permission."
+    return "Failed to revoke {who}'s {mode} permission.".format(who=who, mode=mode)
 
 
 #########################
@@ -18,66 +18,69 @@ def revoke_failure_msg(mode, who):
 
 
 def show_sep_line():
-    print(f"{defs.FormatCode.HEADER}{'#' * 80}{defs.FormatCode.ENDC}")
+    print(defs.FormatCode.HEADER, "#" * 80, defs.FormatCode.ENDC, sep="")
 
 
 def slock_guide():
     print("You can obtain shared access with")
-    print(f"\t{defs.Message.SLOCK_CMD}")
+    print("\t" + defs.Message.SLOCK_CMD)
 
 
 def xlock_guide():
     print("You can obtain exclusive access with")
-    print(f"\t{defs.Message.XLOCK_CMD}")
+    print("\t" + defs.Message.XLOCK_CMD)
 
 
 def show_no_lock():
-    print(f"Neither exclusive nor shared access is not granted yet.")
+    print("Neither exclusive nor shared access is not granted yet.")
     slock_guide()
     xlock_guide()
 
 
 def show_expire(expire):
-    print(f"Permission expires at {expire}.")
+    print("Permission expires at {expire}.".format(expire=expire))
 
 
 def show_granted(mode, expire, highlighted_user=None, others=[]):
-    print(f"{mode} access is granted to")
+    print(mode, "access is granted to")
     if highlighted_user is None:
         who = ", ".join(others)
     else:
-        who = f"{defs.FormatCode.BOLD}{highlighted_user}{defs.FormatCode.ENDC}"
+        who = defs.FormatCode.BOLD + highlighted_user + defs.FormatCode.ENDC
         if len(others) > 0:
             who += ", "
             who += ", ".join(others)
-    print(f"\t{who},")
+    print("\t" + who)
     print(
         "(the last of) which expires at "
-        f"{defs.FormatCode.BOLD}{expire}{defs.FormatCode.ENDC}."
+        + defs.FormatCode.BOLD
+        + expire
+        + defs.FormatCode.ENDC
+        + "."
     )
 
 
 def show_grant_ok(mode, who):
-    ok(f"{who}'s {mode} permission is successfully granted.")
+    ok("{who}'s {mode} permission is successfully granted.".format(who=who, mode=mode))
 
 
 def show_revoke_ok(mode, who):
-    ok(f"{who}'s {mode} permission is successfully revoked.")
+    ok("{who}'s {mode} permission is successfully revoked.".format(who=who, mode=mode))
 
 
 def ok(msg):
-    print(f"{defs.FormatCode.OKGREEN}{msg}{defs.FormatCode.ENDC}")
+    print(defs.FormatCode.OKGREEN + msg + defs.FormatCode.ENDC)
 
 
 def warning(msg):
-    print(f"{defs.FormatCode.WARNING}{msg}{defs.FormatCode.ENDC}")
+    print(defs.FormatCode.WARNING + msg + defs.FormatCode.ENDC)
 
 
 # When some op fails within expectation
 def failure(msg):
-    print(f"{defs.FormatCode.FAIL}{msg}{defs.FormatCode.ENDC}")
+    print(defs.FormatCode.FAIL + msg + defs.FormatCode.ENDC)
 
 
 # Unexpected errors
 def error(msg):
-    print(f"{defs.FormatCode.FAIL}{msg}{defs.FormatCode.ENDC}")
+    print(defs.FormatCode.FAIL + msg + defs.FormatCode.ENDC)

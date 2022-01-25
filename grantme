@@ -237,7 +237,7 @@ def main():
         utils.error(err.msg)
         sys.exit(err.code)
     except Exception as err:
-        utils.error(f"Unexpected error: {err}")
+        utils.error("Unexpected error:", err)
         print_tb(err.__traceback__)
         sys.exit(defs.Message.UNEXPECTED_ERROR_CODE)
 

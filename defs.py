@@ -27,12 +27,14 @@ class Message:
         "is necessarily required to access the host. Its purpose is to make you "
         "aware of the presence of other active users so that you don't disrupt "
         "their work.\n\n"
-        f"Use `{PROG} --mode {{exclusive,shared}} --duration 2h30m to obtain/prolong"
+        "Use `{prog} --mode {{exclusive,shared}} --duration 2h30m to obtain/prolong"
         "permission for 2 hours and 30 minutes.\n"
-        f"Use `{PROG} --revoke` to invalidate your granted permission.\n"
-        f"Use `{PROG} --revoke --user USER` to invalidate other users' granted"
+        "Use `{prog} --revoke` to invalidate your granted permission.\n"
+        "Use `{prog} --revoke --user USER` to invalidate other users' granted"
         "permission.\n"
-        f"Use `{PROG} --status` to view permissions of yours and other users'."
+        "Use `{prog} --status` to view permissions of yours and other users'.".format(
+            prog=PROG
+        )
     )
     DURATION_HELP = (
         'Expected aceess duration, formated as "?w?d?h?m?s".'
@@ -44,8 +46,8 @@ class Message:
     )
 
     # Info
-    SLOCK_CMD = f"{PROG} --mode shared --duration ?d?h?m?s"
-    XLOCK_CMD = f"{PROG} --mode exclusive --duration ?d?h?m?s"
+    SLOCK_CMD = "{prog} --mode shared --duration ?d?h?m?s".format(prog=PROG)
+    XLOCK_CMD = "{prog} --mode exclusive --duration ?d?h?m?s".format(prog=PROG)
     PROLONG_OK = "Permission is successfully prolonged."
     UPGRADE_OK = "Shared permission upgraded to an exclusive permission."
 
@@ -79,8 +81,6 @@ class Message:
     EXCLUSION_ERROR_CODE = 2
     REVOKE_ERROR_CODE = 3
     UNEXPECTED_ERROR_CODE = -1
-
-    CRY = f"An error occurred, please contact the {PROG} maintainer."
 
 
 # Formatting codes

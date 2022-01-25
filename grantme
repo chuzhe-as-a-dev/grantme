@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-from contextlib import contextmanager
 import argparse
-from os.path import isdir, join, isfile
-from os import listdir, remove, rename
-from getpass import getuser
-from datetime import datetime, timedelta
 import sys
-
+from contextlib import contextmanager
+from datetime import datetime, timedelta
+from getpass import getuser
+from os import listdir, remove, rename
+from os.path import isdir, isfile, join
+from traceback import print_tb
 
 import defs
 import utils
@@ -39,7 +39,7 @@ def parse_delta(delta_str):
 
 def write_expire(path, expire):
     with open(path, "w") as f:
-        f.write(datetime.strftime(expire, defs.defs.EXPIRE_FORMAT))
+        f.write(datetime.strftime(expire, defs.EXPIRE_FORMAT))
 
 
 @contextmanager
@@ -102,8 +102,8 @@ def print_status():
     elif len(shares) > 0:
         last_expire = max(shares.values())
         if USER in shares.keys():
-            others = shares.keys()
-            others.pop(USER)
+            others = list(shares.keys())
+            others.remove(USER)
             utils.show_granted(
                 "Shared", last_expire, highlighted_user=USER + " (YOU)", others=others
             )
@@ -183,7 +183,7 @@ def grant(mode, duration):
             if mode == "shared":
                 if exclusive is None:
                     write_expire(join(defs.SDIR, USER), attempted_expire)
-                    utils.show_grant_ok(USER, mode)
+                    utils.show_grant_ok(mode, USER)
                 else:
                     raise utils.RuntimeErrorWithMessageAndCode(
                         defs.Message.GRANT_FAILURE_MSG,
@@ -193,7 +193,7 @@ def grant(mode, duration):
             else:
                 if len(shares) == 0 and exclusive is None:
                     write_expire(join(defs.XDIR, USER), attempted_expire)
-                    utils.show_grant_ok(USER, mode)
+                    utils.show_grant_ok(mode, USER)
                 else:
                     raise utils.RuntimeErrorWithMessageAndCode(
                         defs.Message.GRANT_FAILURE_MSG,
@@ -238,6 +238,7 @@ def main():
         sys.exit(err.code)
     except Exception as err:
         utils.error(f"Unexpected error: {err}")
+        print_tb(err.__traceback__)
         sys.exit(defs.Message.UNEXPECTED_ERROR_CODE)
 
 

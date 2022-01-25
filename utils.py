@@ -41,13 +41,13 @@ def show_expire(expire):
     print(f"Permission expires at {expire}.")
 
 
-def show_granted(mode, expire, highlighted_user=None, others=None):
+def show_granted(mode, expire, highlighted_user=None, others=[]):
     print(f"{mode} access is granted to")
     if highlighted_user is None:
         who = ", ".join(others)
     else:
         who = f"{defs.FormatCode.BOLD}{highlighted_user}{defs.FormatCode.ENDC}"
-        if others is not None:
+        if len(others) > 0:
             who += ", "
             who += ", ".join(others)
     print(f"\t{who},")

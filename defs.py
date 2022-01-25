@@ -80,7 +80,7 @@ class Message:
     EXCLUSION_ERROR_MSG = "More than one users are granted exclusive access."
     EXCLUSION_ERROR_CODE = 2
     REVOKE_ERROR_CODE = 3
-    UNEXPECTED_ERROR_CODE = -1
+    UNEXPECTED_ERROR_CODE = 255
 
 
 # Formatting codes

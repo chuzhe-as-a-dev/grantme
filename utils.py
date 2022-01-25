@@ -54,7 +54,7 @@ def show_granted(mode, expire, highlighted_user=None, others=[]):
     print(
         "(the last of) which expires at "
         + defs.FormatCode.BOLD
-        + expire
+        + str(expire)
         + defs.FormatCode.ENDC
         + "."
     )

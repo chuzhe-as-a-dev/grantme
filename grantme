@@ -6,22 +6,13 @@ from os.path import isdir, join, isfile
 from os import listdir, remove, rename
 from getpass import getuser
 from datetime import datetime, timedelta
+import sys
+
 
 import defs
+import utils
 
-user = getuser()
-err = 0
-
-
-parser = argparse.ArgumentParser(
-    formatter_class=argparse.RawDescriptionHelpFormatter, description=(defs.PROG_DESC)
-)
-parser.add_argument("--status", action="store_true")
-parser.add_argument("--mode", choices=["exclusive", "shared"])
-parser.add_argument("--duration", default="30m", help=defs.DURATION_DESC)
-parser.add_argument("--revoke", action="store_true")
-parser.add_argument("--user", default=user, help=defs.USER_DESC)
-args = parser.parse_args()
+USER = getuser()
 
 
 # copied from https://github.com/zeitgitter/zeitgitterd/blob/master/zeitgitter/deltat.py
@@ -48,301 +39,208 @@ def parse_delta(delta_str):
 
 def write_expire(path, expire):
     with open(path, "w") as f:
-        f.write(datetime.strftime(expire, defs.EXPIRE_FORMAT))
+        f.write(datetime.strftime(expire, defs.defs.EXPIRE_FORMAT))
 
 
-# TODO: make it RAII
-def latch():
+@contextmanager
+def latch(latch_file):
     try:
-        f = open(defs.LATCH_FILE, "x")
-        f.write(user)
-        f.close()
-        return True
+        with open(latch_file, "x") as f:
+            f.write(USER)
+            f.close()
     except:
-        return False
+        raise utils.RuntimeErrorWithMessageAndCode(
+            defs.Message.LATCH_FAILURE_MSG, defs.Message.LATCH_FAILURE_CODE
+        )
 
-
-def unlatch():
-    global err
     try:
-        remove(defs.LATCH_FILE)
-    except:
-        print(FAIL + f"Failed to unlatch." + ENDC)
-        print(CRY)
-        err = ERR
+        yield True
+    finally:
+        remove(latch_file)
 
 
 def granted():
     def get_expire(path):
         with open(path, "r") as f:
-            return datetime.strptime(f.readline(), EXPIRE_FORMAT)
+            return datetime.strptime(f.readline(), defs.EXPIRE_FORMAT)
 
     shares = {
-        f: get_expire(join(SDIR, f))
-        for f in listdir(SDIR)
-        if isfile(join(SDIR, f)) and get_expire(join(SDIR, f)) > datetime.now()
+        filename: get_expire(join(defs.SDIR, filename))
+        for filename in listdir(defs.SDIR)
+        if isfile(join(defs.SDIR, filename))
+        and get_expire(join(defs.SDIR, filename)) > datetime.now()
     }
-    exclusive = [
-        (f, get_expire(join(XDIR, f)))
-        for f in listdir(XDIR)
-        if isfile(join(XDIR, f)) and get_expire(join(XDIR, f)) > datetime.now()
+    exclusives = [
+        (filename, get_expire(join(defs.XDIR, filename)))
+        for filename in listdir(defs.XDIR)
+        if isfile(join(defs.XDIR, filename))
+        and get_expire(join(defs.XDIR, filename)) > datetime.now()
     ]
-    assert len(exclusive) <= 1
 
-    return shares, exclusive
+    if len(exclusives) > 1:
+        raise utils.RuntimeErrorWithMessageAndCode(
+            defs.Message.EXCLUSION_ERROR_MSG, defs.Message.EXCLUSION_ERROR_CODE
+        )
+
+    return shares, (None if len(exclusives) == 0 else exclusives[0])
 
 
 def print_status():
     print()
-    print(HEADER_LINE)
+    print(defs.Message.HEADER_LINE)
+
     shares, exclusive = granted()
-    if len(exclusive) > 0:
-        who = exclusive[0][0]
-        if exclusive[0][0] == user:
+
+    if exclusive is not None:
+        who, expire = exclusive
+        if who == USER:
             who += " (YOU)"
-        print(f"Exclusive access is granted to")
-        print(f"\t{BOLD}{OKGREEN}{who}{ENDC},")
-        print(f"which expires at {BOLD}{OKGREEN}{exclusive[0][1]}{ENDC}.")
-        if exclusive[0][0] != user:
-            print(
-                f"{WARNING}Please {BOLD}AVOID DEMANDING TASKS{ENDC}{WARNING}, so as to not disrupt others.{ENDC}"
-            )
+            utils.show_granted("Exclusive", expire, highlighted_user=who)
+        else:
+            utils.show_granted("Exclusive", expire, others=[who])
+            utils.warning(defs.Message.DO_NOT_DISTURB)
     elif len(shares) > 0:
         last_expire = max(shares.values())
-        who = ", ".join(shares.keys())
-        if user in shares.keys():
-            who = ", ".join(
-                [name if name != user else name + " (YOU)" for name in shares.keys()]
+        if USER in shares.keys():
+            others = shares.keys()
+            others.remove(USER)
+            utils.show_granted(
+                "Shared", last_expire, highlighted_user=USER + " (YOU)", others=others
             )
-        print(f"Shared accesses are granted to")
-        print(f"\t{BOLD}{OKCYAN}{who}{ENDC},")
-        print(f"the last of which expires at {BOLD}{OKCYAN}{last_expire}{ENDC}.")
-        if user not in shares.keys():
-            print("You can obtain shared access with")
-            print(f"\t{SLOCK_CMD}")
+            utils.show_expire(shares[USER])
         else:
-            print(f"Your shared permission expires at {shares[user]}.")
+            utils.show_granted("Shared", last_expire, others=shares.keys())
+            utils.slock_guide()
     else:
-        print(f"Neither exclusive nor shared access is not granted yet.")
-        print("You can obtain exclusive access with")
-        print(f"\t{XLOCK_CMD}")
-        print("You can obtain shared access with")
-        print(f"\t{SLOCK_CMD}")
-    print(HEADER_LINE)
+        utils.show_no_lock()
+
+    print(defs.Message.HEADER_LINE)
 
 
-def revoke(who=user):
-    global err
-    if not latch():
-        print(
-            f"{FAIL}Another user is attempting to change permissions. Please retry again.{ENDC}"
-        )
-        err = ERR
-    else:
-        try:
-            shares, exclusive = granted()
-            if len(exclusive) > 0 and who == exclusive[0][0]:
-                try:
-                    remove(join(XDIR, who))
-                    print(
-                        f"{OKGREEN}{who}'s exclusive permission is successfully revoked.{ENDC}"
-                    )
-                except:
-                    print(f"{FAIL}Failed to revoke {who}'s exclusive permission.{ENDC}")
-                    print(CRY)
-                    err = ERR
-            elif who in shares.keys():
-                try:
-                    remove(join(SDIR, who))
-                    print(
-                        f"{OKGREEN}{who}'s shared permission is successfully revoked.{ENDC}"
-                    )
-                except:
-                    print(f"{FAIL}Failed to revoke {who}'s shared permission.{ENDC}")
-                    print(CRY)
-                    err = ERR
-            else:
-                print(
-                    f"{WARNING}{who} is not currently granted with any permission.{ENDC}"
-                )
-        finally:
-            unlatch()
+def revoke(who=USER):
+    with latch(defs.LATCH_FILE):
+        shares, exclusive = granted()
+        if exclusive is not None and who == exclusive[0]:
+            remove(join(defs.XDIR, who))
+            utils.show_revoke_ok("exclusive", who)
+        elif who in shares.keys():
+            remove(join(defs.SDIR, who))
+            utils.show_revoke_ok("shared", who)
+        else:
+            utils.warning(defs.Message.NOTHING_REVOKED)
 
 
 # cannot grant non-current-login users, because the file created would be owned
-# by the current login user
+# by the current login USER
 def grant(mode, duration):
-    global err
-    if not latch():
-        print(
-            FAIL
-            + "Another user is attempting to change permissions. Please retry again."
-            + ENDC
-        )
-        err = ERR
-    else:
-        try:
-            shares, exclusive = granted()
-            attempted_expire = datetime.now() + parse_delta(duration)
+    with latch(defs.LATCH_FILE):
+        shares, exclusive = granted()
+        attempted_expire = datetime.now() + parse_delta(duration)
 
-            # if already locked, try prolong or upgrade
-            if len(exclusive) > 0 and user == exclusive[0][0]:
-                if mode != "exclusive":
-                    print(
-                        f"{WARNING}{user} already has an exclusive permission. Ignoring `--mode shared`.{ENDC}"
-                    )
+        # if already x-locked, try upgrade
+        if exclusive is not None and USER == exclusive[0]:
+            if mode != "exclusive":
+                utils.warning(defs.Message.ATTEMP_SLOCK_WITH_XLOCK)
 
-                old_expire = exclusive[0][1]
-                if old_expire > attempted_expire:
-                    print(
-                        f"{WARNING}{user} already has an exclusive permission that expires ({BOLD}{old_expire}{ENDC}{WARNING}) after the given duration. No change is made.{ENDC}"
-                    )
-                else:
-                    try:
-                        write_expire(join(XDIR, user), attempted_expire)
-                        print(
-                            f"{OKGREEN}{user}'s exclusive permission is prolong to {attempted_expire}.{ENDC}"
-                        )
-                    except:
-                        print(
-                            f"{FAIL}Failed to prolong {user}'s exclusive permission.{ENDC}"
-                        )
-                        print(CRY)
-                        err = ERR
-            elif user in shares:
-                # try upgrade first
-                path = join(SDIR, user)
-                if mode == "exclusive":
-                    if len(shares) == 1:
-                        assert len(exclusive) == 0
-                        try:
-                            rename(path, join(XDIR, user))
-                            path = join(XDIR, user)
-                            print(
-                                f"{OKGREEN}{user}'s shared permission upgraded to an exclusive permission.{ENDC}"
-                            )
-                        except:
-                            print(
-                                f"{FAIL}Failed to upgrade {user}'s shared permission.{ENDC}"
-                            )
-                            print(CRY)
-                            err = ERR
-                    else:
-                        print(
-                            f"{FAIL}Cannot upgrade to an exclusive permission because shared permissions are currently granted to other users. Skipping upgrade and attempting to prolong duration.{ENDC}"
-                        )
-                        err = ERR
-
-                # then prolong
-                old_expire = shares[user]
-                if old_expire > attempted_expire:
-                    print(
-                        f"{WARNING}{user} already has a permission that expires ({BOLD}{old_expire}{ENDC}{WARNING}) after the given duration. No change is made to the expiration time.{ENDC}"
-                    )
-                else:
-                    try:
-                        write_expire(path, attempted_expire)
-                        print(
-                            f"{OKGREEN}{user}'s permission is prolong to {attempted_expire}.{ENDC}"
-                        )
-                    except:
-                        print(f"{FAIL}Failed to prolong {user}'s permission.{ENDC}")
-                        print(CRY)
-                        err = ERR
+            old_expire = exclusive[1]
+            if old_expire > attempted_expire:
+                utils.warning(defs.Message.ATTEMP_SHORTER_DURATION_THAN_ALREADY_GRANTED)
+                utils.show_expire(old_expire)
             else:
-                if mode == "shared":
-                    # want shared
-                    if len(exclusive) == 0:
-                        try:
-                            write_expire(join(SDIR, user), attempted_expire)
-                            print(
-                                f"{OKGREEN}{user} is grated shared permission that expires at {attempted_expire}.{ENDC}"
-                            )
-                        except:
-                            print(
-                                f"{FAIL}Failed to grant shared permission to {user}.{ENDC}"
-                            )
-                            print(CRY)
-                            err = ERR
-                    else:
-                        print(
-                            f"{FAIL}Cannot grant shared permission because an exclusive permission is already granted to {exclusive[0][0]}.{ENDC}"
-                        )
-                        err = ERR
+                write_expire(join(defs.XDIR, USER), attempted_expire)
+                utils.ok(defs.Message.PROLONG_OK)
+                utils.show_expire(attempted_expire)
+
+        # if already s-locked, try prolong or/and upgrade
+        elif USER in shares:
+            lock_path = join(defs.SDIR, USER)
+
+            # try upgrade first
+            if mode == "exclusive":
+                if len(shares) == 1:
+                    rename(lock_path, join(defs.XDIR, USER))
+                    lock_path = join(defs.XDIR, USER)  # for later prolonging
+                    utils.ok(defs.Message.UPGRADE_OK)
                 else:
-                    # want exclusive
-                    if len(shares) == 0 and len(exclusive) == 0:
-                        try:
-                            write_expire(join(XDIR, user), attempted_expire)
-                            print(
-                                f"{OKGREEN}{user} is grated an exclusive permission that expires at {attempted_expire}.{ENDC}"
-                            )
-                        except:
-                            print(
-                                f"{FAIL}Failed to grant an exclusive permission to {user}.{ENDC}"
-                            )
-                            print(CRY)
-                            err = ERR
-                    else:
-                        print(
-                            f"{FAIL}Cannot grant an exclusive permission because shared permissions are already granted.{ENDC}"
-                        )
-                        err = ERR
-        finally:
-            unlatch()
+                    raise utils.RuntimeErrorWithMessageAndCode(
+                        defs.Message.UPGRADE_FAILURE_MSG,
+                        defs.Message.UPGRADE_FAILURE_CODE,
+                    )
+
+            # then prolong
+            old_expire = shares[USER]
+            if old_expire > attempted_expire:
+                utils.warning(defs.Message.ATTEMP_SHORTER_DURATION_THAN_ALREADY_GRANTED)
+                utils.show_expire(old_expire)
+            else:
+                write_expire(lock_path, attempted_expire)
+                utils.ok(defs.Message.PROLONG_OK)
+                utils.show_expire(attempted_expire)
+
+        # if neither s- nor x-locked, try lock
+        else:
+            # want shared
+            if mode == "shared":
+                if len(exclusive) == 0:
+                    write_expire(join(defs.SDIR, USER), attempted_expire)
+                    utils.show_grant_ok(USER, mode)
+                else:
+                    raise utils.RuntimeErrorWithMessageAndCode(
+                        defs.Message.GRANT_FAILURE_MSG,
+                        defs.Message.GRANT_FAILURE_CODE,
+                    )
+            # want exclusive
+            else:
+                if len(shares) == 0 and exclusive is None:
+                    write_expire(join(defs.XDIR, USER), attempted_expire)
+                    utils.show_grant_ok(USER, mode)
+                else:
+                    raise utils.RuntimeErrorWithMessageAndCode(
+                        defs.Message.GRANT_FAILURE_MSG,
+                        defs.Message.GRANT_FAILURE_CODE,
+                    )
 
 
 def check_env():
-    if not isdir(DATA_DIR) or not isdir(SDIR) or not isdir(XDIR):
-        print(FAIL + f"Data directory does not exist or is not complete." + ENDC)
-        print(CRY)
-        exit(-1)
+    if not isdir(defs.DATA_DIR) or not isdir(defs.SDIR) or not isdir(defs.XDIR):
+        raise utils.RuntimeErrorWithMessageAndCode(
+            defs.DIR_ERROR_MSG, defs.DIR_ERROR_CODE
+        )
 
 
 def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description=(
-            'This is a utility for "granting" exclusive/shared access to '
-            "machines. It is purely advisory in the sense that neither permissions "
-            "is necessarily required to access the host. Its purpose is to make you "
-            "aware of the presence of other active users so that you don't disrupt "
-            "their work.\n\n"
-            f"Use `{PROG} --mode {{exclusive,shared}} --duration 2h30m to obtain/prolong permission for 2 hours and 30 minutes.\n"
-            f"Use `{PROG} --revoke` to invalidate your granted permission.\n"
-            f"Use `{PROG} --revoke --user user` to invalidate other users' granted permission.\n"
-            f"Use `{PROG} --status` to view permissions of yours and other users'."
-        ),
+        description=(defs.Message.PROG_HELP),
     )
     parser.add_argument("-s", "--status", action="store_true")
     parser.add_argument("-m", "--mode", choices=["exclusive", "shared"])
     parser.add_argument(
-        "-d",
-        "--duration",
-        default="30m",
-        help=f'Expected aceess duration, formated as "?w?d?h?m?s". Default to "30m". You can rerun {PROG} to prolong permission.',
+        "-d", "--duration", default="30m", help=defs.Message.DURATION_HELP
     )
     parser.add_argument("-r", "--revoke", action="store_true")
-    parser.add_argument(
-        "-u",
-        "--user",
-        default=user,
-        help="The user whose permissions should be revoked. Defaults to current the login user.",
-    )
+    parser.add_argument("-u", "--USER", default=USER, help=defs.Message.USER_HELP)
     args = parser.parse_args()
 
-    check_env()
+    try:
+        check_env()
 
-    if args.status:
-        print_status()
-    elif args.revoke:
-        revoke(args.user)
-    elif args.mode is not None:
-        grant(args.mode, args.duration)
-    else:
-        parser.print_help()
-    exit(err)
+        if args.status:
+            print_status()
+        elif args.revoke:
+            revoke(args.USER)
+        elif args.mode is not None:
+            grant(args.mode, args.duration)
+        else:
+            parser.print_help()
+    except utils.RuntimeErrorWithMessageAndCode as err:
+        utils.error(err.msg)
+        sys.exit(err.code)
+    except Exception as err:
+        utils.error(f"Unexpected error: {err}")
+        sys.exit(defs.Message.UNEXPECTED_ERROR_CODE)
 
 
 if __name__ == "__main__":
     main()
+    sys.exit(0)  # is this necessary?

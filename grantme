@@ -43,6 +43,46 @@ XLOCK_CMD = f'{BOLD}{PROG} --mode exclusive --duration ?d?h?m?s{ENDC}'
 CRY = f'An error occurred, please contact the {PROG} maintainer.'
 HEADER_LINE = f"{HEADER}{'#' * 80}{ENDC}"
 
+PROG_DESC = (
+    'This is a utility for "granting" exclusive/shared access to '
+    'machines. It is purely advisory in the sense that neither permissions '
+    'is necessarily required to access the host. Its purpose is to make you '
+    "aware of the presence of other active users so that you don't disrupt "
+    'their work.\n\n'
+    f'Use `{PROG} --mode {{exclusive,shared}} --duration 2h30m to obtain/prolong'
+    'permission for 2 hours and 30 minutes.\n'
+    f'Use `{PROG} --revoke` to invalidate your granted permission.\n'
+    f"Use `{PROG} --revoke --user USER` to invalidate other users' granted permission.\n"
+    f"Use `{PROG} --status` to view permissions of yours and other users'."
+)
+DURATION_DESC = (
+    'Expected aceess duration, formated as "?w?d?h?m?s".'
+    f'Default to "30m". You can rerun {PROG} to prolong permission.'
+)
+USER_DESC = (
+    "The user whose permissions should be revoked. Defaults to the current login user."
+)
+
+EXPIRE_FORMAT = "%Y-%m-%d %H:%M:%S"
+DELTA_REGEX = re.compile(r'^((?P<weeks>[\.\d]+?)w)? *'
+                         r'^((?P<days>[\.\d]+?)d)? *'
+                         r'((?P<hours>[\.\d]+?)h)? *'
+                         r'((?P<minutes>[\.\d]+?)m)? *'
+                         r'((?P<seconds>[\.\d]+?)s?)?$')
+
+
+parser = argparse.ArgumentParser(
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    description=(PROG_DESC))
+parser.add_argument('--status', action='store_true')
+parser.add_argument(
+    '--mode', choices=['exclusive', 'shared'])
+parser.add_argument('--duration', default='30m',
+                    help=DURATION_DESC)
+parser.add_argument('--revoke', action='store_true')
+parser.add_argument('--user', default=USER, help=USER_DESC)
+args = parser.parse_args()
+
 
 # copied from https://github.com/zeitgitter/zeitgitterd/blob/master/zeitgitter/deltat.py
 def parse_delta(delta_str):

@@ -103,7 +103,7 @@ def print_status():
         last_expire = max(shares.values())
         if USER in shares.keys():
             others = shares.keys()
-            others.remove(USER)
+            others.pop(USER)
             utils.show_granted(
                 "Shared", last_expire, highlighted_user=USER + " (YOU)", others=others
             )

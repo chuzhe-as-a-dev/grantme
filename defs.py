@@ -38,7 +38,9 @@ class Message:
     )
     DURATION_HELP = (
         'Expected aceess duration, formated as "?w?d?h?m?s".'
-        f'Default to "30m". You can rerun {PROG} to prolong permission.'
+        'Default to "30m". You can rerun {prog} to prolong permission.'.format(
+            prog=PROG
+        )
     )
     USER_HELP = (
         "The user whose permissions should be revoked."

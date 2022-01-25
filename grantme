@@ -87,7 +87,7 @@ def granted():
 
 def print_status():
     print()
-    print(defs.Message.HEADER_LINE)
+    utils.show_sep_line()
 
     shares, exclusive = granted()
 
@@ -114,7 +114,7 @@ def print_status():
     else:
         utils.show_no_lock()
 
-    print(defs.Message.HEADER_LINE)
+    utils.show_sep_line()
 
 
 def revoke(who=USER):

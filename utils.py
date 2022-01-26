@@ -42,7 +42,13 @@ def show_expire(expire, whose=None):
         subject = "The permission"
     else:
         subject = "{whose} permission".format(whose=whose)
-    print("{subject} expires at {expire}.".format(subject=subject, expire=expire))
+    print(
+        "{subject} expires at ".format(subject=subject)
+        + defs.FormatCode.BOLD
+        + str(expire)
+        + defs.FormatCode.ENDC
+        + "."
+    )
 
 
 def show_granted(mode, expire, highlighted_user=None, others=[]):

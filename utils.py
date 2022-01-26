@@ -37,8 +37,12 @@ def show_no_lock():
     xlock_guide()
 
 
-def show_expire(expire):
-    print("Permission expires at {expire}.".format(expire=expire))
+def show_expire(expire, whose=None):
+    if whose is None:
+        subject = "The permission"
+    else:
+        subject = "{whose} permission".format(whose=whose)
+    print("{subject} expires at {expire}.".format(subject=subject, expire=expire))
 
 
 def show_granted(mode, expire, highlighted_user=None, others=[]):

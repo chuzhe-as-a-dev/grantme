@@ -110,7 +110,7 @@ def print_status():
             utils.show_granted(
                 "Shared", last_expire, highlighted_user=USER + " (YOU)", others=others
             )
-            utils.show_expire(shares[USER])
+            utils.show_expire(shares[USER], "Your")
         else:
             utils.show_granted("Shared", last_expire, others=shares.keys())
             utils.slock_guide()
@@ -148,11 +148,11 @@ def grant(mode, duration):
             old_expire = exclusive[1]
             if old_expire > attempted_expire:
                 utils.warning(defs.Message.ATTEMP_SHORTER_DURATION_THAN_ALREADY_GRANTED)
-                utils.show_expire(old_expire)
+                utils.show_expire(old_expire, "Your")
             else:
-                pesisted = write_expire(join(defs.XDIR, USER), attempted_expire)
+                persisted = write_expire(join(defs.XDIR, USER), attempted_expire)
                 utils.ok(defs.Message.PROLONG_OK)
-                utils.show_expire(pesisted)
+                utils.show_expire(persisted, "Your")
 
         # if already s-locked, try prolong or/and upgrade
         elif USER in shares:
@@ -174,20 +174,20 @@ def grant(mode, duration):
             old_expire = shares[USER]
             if old_expire > attempted_expire:
                 utils.warning(defs.Message.ATTEMP_SHORTER_DURATION_THAN_ALREADY_GRANTED)
-                utils.show_expire(old_expire)
+                utils.show_expire(old_expire, "Your")
             else:
-                pesisted = write_expire(lock_path, attempted_expire)
+                persisted = write_expire(lock_path, attempted_expire)
                 utils.ok(defs.Message.PROLONG_OK)
-                utils.show_expire(pesisted)
+                utils.show_expire(persisted, "Your")
 
         # if neither s- nor x-locked, try lock
         else:
             # want shared
             if mode == "shared":
                 if exclusive is None:
-                    pesisted = write_expire(join(defs.SDIR, USER), attempted_expire)
+                    persisted = write_expire(join(defs.SDIR, USER), attempted_expire)
                     utils.show_grant_ok(mode, USER)
-                    utils.show_expire(pesisted)
+                    utils.show_expire(persisted, "Your")
                 else:
                     raise utils.RuntimeErrorWithMessageAndCode(
                         defs.Message.GRANT_FAILURE_MSG,
@@ -196,9 +196,9 @@ def grant(mode, duration):
             # want exclusive
             else:
                 if len(shares) == 0 and exclusive is None:
-                    pesisted = write_expire(join(defs.XDIR, USER), attempted_expire)
+                    persisted = write_expire(join(defs.XDIR, USER), attempted_expire)
                     utils.show_grant_ok(mode, USER)
-                    utils.show_expire(pesisted)
+                    utils.show_expire(persisted, "Your")
                 else:
                     raise utils.RuntimeErrorWithMessageAndCode(
                         defs.Message.GRANT_FAILURE_MSG,

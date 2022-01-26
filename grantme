@@ -37,9 +37,16 @@ def parse_delta(delta_str):
     return timedelta(**time_params)
 
 
-def write_expire(path, expire):
+def write_expire(path: str, expire: datetime) -> datetime:
     with open(path, "w") as f:
-        f.write(datetime.strftime(expire, defs.EXPIRE_FORMAT))
+        written = datetime.strftime(expire, defs.EXPIRE_FORMAT)
+        f.write(written)
+        return datetime.strptime(written, defs.EXPIRE_FORMAT)
+
+
+def get_expire(path: str) -> datetime:
+    with open(path, "r") as f:
+        return datetime.strptime(f.readline(), defs.EXPIRE_FORMAT)
 
 
 @contextmanager
@@ -60,10 +67,6 @@ def latch(latch_file):
 
 
 def granted():
-    def get_expire(path):
-        with open(path, "r") as f:
-            return datetime.strptime(f.readline(), defs.EXPIRE_FORMAT)
-
     shares = {
         filename: get_expire(join(defs.SDIR, filename))
         for filename in listdir(defs.SDIR)
@@ -147,9 +150,9 @@ def grant(mode, duration):
                 utils.warning(defs.Message.ATTEMP_SHORTER_DURATION_THAN_ALREADY_GRANTED)
                 utils.show_expire(old_expire)
             else:
-                write_expire(join(defs.XDIR, USER), attempted_expire)
+                pesisted = write_expire(join(defs.XDIR, USER), attempted_expire)
                 utils.ok(defs.Message.PROLONG_OK)
-                utils.show_expire(attempted_expire)
+                utils.show_expire(pesisted)
 
         # if already s-locked, try prolong or/and upgrade
         elif USER in shares:
@@ -173,17 +176,18 @@ def grant(mode, duration):
                 utils.warning(defs.Message.ATTEMP_SHORTER_DURATION_THAN_ALREADY_GRANTED)
                 utils.show_expire(old_expire)
             else:
-                write_expire(lock_path, attempted_expire)
+                pesisted = write_expire(lock_path, attempted_expire)
                 utils.ok(defs.Message.PROLONG_OK)
-                utils.show_expire(attempted_expire)
+                utils.show_expire(pesisted)
 
         # if neither s- nor x-locked, try lock
         else:
             # want shared
             if mode == "shared":
                 if exclusive is None:
-                    write_expire(join(defs.SDIR, USER), attempted_expire)
+                    pesisted = write_expire(join(defs.SDIR, USER), attempted_expire)
                     utils.show_grant_ok(mode, USER)
+                    utils.show_expire(pesisted)
                 else:
                     raise utils.RuntimeErrorWithMessageAndCode(
                         defs.Message.GRANT_FAILURE_MSG,
@@ -192,8 +196,9 @@ def grant(mode, duration):
             # want exclusive
             else:
                 if len(shares) == 0 and exclusive is None:
-                    write_expire(join(defs.XDIR, USER), attempted_expire)
+                    pesisted = write_expire(join(defs.XDIR, USER), attempted_expire)
                     utils.show_grant_ok(mode, USER)
+                    utils.show_expire(pesisted)
                 else:
                     raise utils.RuntimeErrorWithMessageAndCode(
                         defs.Message.GRANT_FAILURE_MSG,

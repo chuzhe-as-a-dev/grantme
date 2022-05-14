@@ -1,24 +1,22 @@
-import imp
-import defs
+from grantme import defs
 
 
-class RuntimeErrorWithMessageAndCode(RuntimeError):
-    def __init__(self, msg, code):
-        self.msg = msg
-        self.code = code
-
-
-def revoke_failure_msg(mode, who):
-    return "Failed to revoke {who}'s {mode} permission.".format(who=who, mode=mode)
-
-
-#########################
-# Message printing utils
-#########################
+# Formatting codes
+# copied from https://stackoverflow.com/a/287944
+class FormatCode:
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKCYAN = "\033[96m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+    ENDC = "\033[0m"
 
 
 def show_sep_line():
-    print(defs.FormatCode.HEADER, "#" * 80, defs.FormatCode.ENDC, sep="")
+    print(FormatCode.HEADER, "#" * 80, FormatCode.ENDC, sep="")
 
 
 def slock_guide():
@@ -44,9 +42,9 @@ def show_expire(expire, whose=None):
         subject = "{whose} permission".format(whose=whose)
     print(
         "{subject} expires at ".format(subject=subject)
-        + defs.FormatCode.BOLD
+        + FormatCode.BOLD
         + str(expire)
-        + defs.FormatCode.ENDC
+        + FormatCode.ENDC
         + "."
     )
 
@@ -56,16 +54,16 @@ def show_granted(mode, expire, highlighted_user=None, others=[]):
     if highlighted_user is None:
         who = ", ".join(others)
     else:
-        who = defs.FormatCode.BOLD + highlighted_user + defs.FormatCode.ENDC
+        who = FormatCode.BOLD + highlighted_user + FormatCode.ENDC
         if len(others) > 0:
             who += ", "
             who += ", ".join(others)
     print("\t" + who)
     print(
         "(the last of) which expires at "
-        + defs.FormatCode.BOLD
+        + FormatCode.BOLD
         + str(expire)
-        + defs.FormatCode.ENDC
+        + FormatCode.ENDC
         + "."
     )
 
@@ -79,18 +77,18 @@ def show_revoke_ok(mode, who):
 
 
 def ok(msg):
-    print(defs.FormatCode.OKGREEN + msg + defs.FormatCode.ENDC)
+    print(FormatCode.OKGREEN + msg + FormatCode.ENDC)
 
 
 def warning(msg):
-    print(defs.FormatCode.WARNING + msg + defs.FormatCode.ENDC)
+    print(FormatCode.WARNING + msg + FormatCode.ENDC)
 
 
 # When some op fails within expectation
 def failure(msg):
-    print(defs.FormatCode.FAIL + msg + defs.FormatCode.ENDC)
+    print(FormatCode.FAIL + msg + FormatCode.ENDC)
 
 
 # Unexpected errors
 def error(msg):
-    print(defs.FormatCode.FAIL + msg + defs.FormatCode.ENDC)
+    print(FormatCode.FAIL + msg + FormatCode.ENDC)

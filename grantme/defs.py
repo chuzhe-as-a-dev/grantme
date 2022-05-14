@@ -1,22 +1,36 @@
 from os.path import join
-import re
 
 
 PROG = "grantme"
 
-LATCH_FILE = "/run/lock/grant.lock"
-DATA_DIR = "/var/lib/grant"
-SDIR = join(DATA_DIR, "shared")
-XDIR = join(DATA_DIR, "exclusive")
+DATA_DIR = "/var/lib/grantme"
+DB_FILENAME = "db.sqlite3"
+DB_FILE = join(DATA_DIR, "db.sqlite3")
 
-EXPIRE_FORMAT = "%Y-%m-%d %H:%M:%S"
-DELTA_REGEX = re.compile(
-    r"^((?P<weeks>[\.\d]+?)w)? *"
-    r"^((?P<days>[\.\d]+?)d)? *"
-    r"((?P<hours>[\.\d]+?)h)? *"
-    r"((?P<minutes>[\.\d]+?)m)? *"
-    r"((?P<seconds>[\.\d]+?)s?)?$"
-)
+
+class SQL:
+    CREATE_DB = (
+        "create table if not exists leases ("
+        "  user      TEXT constraint leases_pk primary key,"
+        "  shared    INTEGER not null,"
+        "  expire_at timestamp not null"
+        ");"
+    )
+    CREATE_INDEX = (
+        "create index if not exists leases_expire_at_index on leases (expire_at);"
+    )
+    QUERY_SHARED = (
+        "select user, expire_at from leases where shared = true and expire_at > :now;"
+    )
+    QUERY_EXCLUSIVE = (
+        "select user, expire_at from leases where shared = false and expire_at > :now;"
+    )
+    UPSERT = (
+        "insert into leases values (:who, :shared, :expire_at)"
+        "  on conflict do update set shared=:shared, expire_at=:expire_at;"
+    )
+    UPGRADE = "update leases set shared = false where user = :who and shared = true;"
+    RELEASE = "delete from leases where user = :who;"
 
 
 class Message:
@@ -83,17 +97,3 @@ class Message:
     EXCLUSION_ERROR_CODE = 2
     REVOKE_ERROR_CODE = 3
     UNEXPECTED_ERROR_CODE = 255
-
-
-# Formatting codes
-# copied from https://stackoverflow.com/a/287944
-class FormatCode:
-    HEADER = "\033[95m"
-    OKBLUE = "\033[94m"
-    OKCYAN = "\033[96m"
-    OKGREEN = "\033[92m"
-    WARNING = "\033[93m"
-    FAIL = "\033[91m"
-    BOLD = "\033[1m"
-    UNDERLINE = "\033[4m"
-    ENDC = "\033[0m"

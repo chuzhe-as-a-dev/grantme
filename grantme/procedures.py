@@ -157,7 +157,6 @@ def grant(
 def print_status(you: str, conn: sqlite3.Connection):
     status = get_status(conn)
 
-    print()
     printers.show_sep_line()
 
     if status is None:

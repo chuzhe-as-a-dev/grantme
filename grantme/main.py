@@ -16,7 +16,7 @@ from grantme.procedures import (
 )
 from grantme.utils.errors import GrantmeError, UNEXPECTED_ERROR_CODE
 from grantme.utils.printers import error
-from grantme.utils.setup import create_db
+from grantme.utils.setup import create_db, create_motd
 
 
 DB_FILENAME = "db.sqlite3"
@@ -53,13 +53,17 @@ def main():
             error(f"Original exception: {err}")
             sys.exit(UNEXPECTED_ERROR_CODE)
 
+        create_motd()
+
     try:
         exit_code = 0
 
         conn = sqlite3.connect(str(DB_FILE), detect_types=sqlite3.PARSE_DECLTYPES)
         conn.row_factory = sqlite3.Row
 
-        if args.status:
+        if args.init:
+            pass  # to prevent printing CLI help message... should fix parser later!
+        elif args.status:
             print_status(current_user, conn)
         elif args.revoke:
             revoke_and_print_result(args.user, conn)

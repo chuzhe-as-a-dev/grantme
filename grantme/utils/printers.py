@@ -80,6 +80,10 @@ def ok(msg):
     print(FormatCode.OKGREEN + msg + FormatCode.ENDC)
 
 
+def info(msg):
+    print(FormatCode.OKBLUE + msg + FormatCode.ENDC)
+
+
 def warning(msg):
     print(FormatCode.WARNING + msg + FormatCode.ENDC)
 

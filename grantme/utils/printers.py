@@ -1,4 +1,4 @@
-from grantme import defs
+from grantme.constants.msgs import SLOCK_CMD, XLOCK_CMD
 
 
 # Formatting codes
@@ -21,12 +21,12 @@ def show_sep_line():
 
 def slock_guide():
     print("You can obtain shared access with")
-    print("\t" + defs.Message.SLOCK_CMD)
+    print("\t" + SLOCK_CMD)
 
 
 def xlock_guide():
     print("You can obtain exclusive access with")
-    print("\t" + defs.Message.XLOCK_CMD)
+    print("\t" + XLOCK_CMD)
 
 
 def show_no_lock():

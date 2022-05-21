@@ -4,11 +4,24 @@ import argparse
 import sqlite3
 import sys
 from getpass import getuser
+from pathlib import Path
 from traceback import print_tb
 
-from . import defs
-from . import procedures
-from .utils import errors, printers
+from grantme.constants.misc import PROG
+from grantme.constants.msgs import DURATION_HELP, INIT_HELP, PROG_HELP, USER_HELP
+from grantme.procedures import (
+    grant_and_print_result,
+    print_status,
+    revoke_and_print_result,
+)
+from grantme.utils.errors import GrantmeError, UNEXPECTED_ERROR_CODE
+from grantme.utils.printers import error
+from grantme.utils.setup import create_db
+
+
+DB_FILENAME = "db.sqlite3"
+DATA_DIR = Path("/var/lib/grantme")
+DB_FILE = DATA_DIR / DB_FILENAME
 
 
 def main():
@@ -16,69 +29,54 @@ def main():
 
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description=(defs.Message.PROG_HELP),
+        description=(PROG_HELP),
     )
     parser.add_argument("-s", "--status", action="store_true")
     parser.add_argument("-m", "--mode", choices=["exclusive", "shared"])
-    parser.add_argument(
-        "-d", "--duration", default="30m", help=defs.Message.DURATION_HELP
-    )
+    parser.add_argument("-d", "--duration", default="30m", help=DURATION_HELP)
     parser.add_argument("-r", "--revoke", action="store_true")
-    parser.add_argument(
-        "-u", "--user", default=current_user, help=defs.Message.USER_HELP
-    )
-    parser.add_argument(
-        "-i", "--init", action="store_true", help=defs.Message.INIT_HELP
-    )
+    parser.add_argument("-u", "--user", default=current_user, help=USER_HELP)
+    parser.add_argument("-i", "--init", action="store_true", help=INIT_HELP)
 
     args = parser.parse_args()
 
-    try:
-        if args.init:
-            defs.DATA_DIR.mkdir(parents=True, exist_ok=True)
-            defs.DATA_DIR.chmod(defs.DATA_DIR.stat().st_mode | 0o666)
-
-        conn = sqlite3.connect(
-            str(defs.DB_FILE), uri=True, detect_types=sqlite3.PARSE_DECLTYPES
-        )
-        conn.row_factory = sqlite3.Row
-
-        if args.init:
-            defs.DB_FILE.chmod(defs.DB_FILE.stat().st_mode | 0o666)
-    except Exception as err:
-        printers.error(
-            "Failed to connect the database. "
-            f"Please ensure that {defs.DB_FILE} exists or "
-            "you have root privilege when creating one. "
-            f"To resolve corrupted database files, you may remove {defs.DB_FILE} "
-            f"and then run `{defs.PROG} --init` to create a new one."
-        )
-        printers.error(f"Original exception message: {err}")
-        sys.exit(defs.Message.UNEXPECTED_ERROR_CODE)
+    if args.init:
+        try:
+            create_db(DATA_DIR, DB_FILE)
+        except Exception as err:
+            error(
+                "Failed to initiate the database. Please ensure that you have root"
+                f" privilege for creating {DB_FILE} file. To resolve corrupted"
+                f" database files, you may remove {DB_FILE} and then run"
+                f" `{PROG} --init` to create a new one."
+            )
+            error(f"Original exception: {err}")
+            sys.exit(UNEXPECTED_ERROR_CODE)
 
     try:
         exit_code = 0
 
-        if args.init:
-            procedures.setup_db(conn)
-        elif args.status:
-            procedures.print_status(current_user, conn)
+        conn = sqlite3.connect(str(DB_FILE), detect_types=sqlite3.PARSE_DECLTYPES)
+        conn.row_factory = sqlite3.Row
+
+        if args.status:
+            print_status(current_user, conn)
         elif args.revoke:
-            procedures.revoke_and_print_result(args.user, conn)
+            revoke_and_print_result(args.user, conn)
         elif args.mode is not None:
-            assert args.mode == "shared" or args.mode == "exclusive"
-            procedures.grant_and_print_result(
+            assert args.mode in ("shared", "exclusive")
+            grant_and_print_result(
                 current_user, args.mode == "shared", args.duration, conn
             )
         else:
             parser.print_help()
-    except errors.RuntimeErrorWithMessageAndCode as err:
-        printers.error(err.msg)
+    except GrantmeError as err:
+        error(err.msg)
         exit_code = err.code
     except Exception as err:
-        printers.error("Unexpected error: {err}".format(err=err))
+        error(f"Unexpected exception: {err}")
         print_tb(err.__traceback__)
-        exit_code = defs.Message.UNEXPECTED_ERROR_CODE
+        exit_code = UNEXPECTED_ERROR_CODE
     finally:
         conn.close()
         sys.exit(exit_code)

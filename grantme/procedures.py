@@ -8,8 +8,11 @@ from os.path import join
 from pathlib import Path
 from typing import Mapping, Optional
 
-from . import defs
-from .utils import errors, printers, timer
+from grantme.constants.msgs import *
+from grantme.constants.sqls import *
+from grantme.utils.errors import *
+
+from .utils import printers, timer
 
 
 class Mode(Enum):
@@ -31,18 +34,10 @@ class GrantResult:
     prev_expire_at: Optional[datetime]
 
 
-def setup_db(conn: sqlite3.Connection):
-    cur = conn.cursor()
-    cur.execute(defs.SQL.CREATE_DB)
-    cur.execute(defs.SQL.CREATE_INDEX)
-    cur.close()
-    conn.commit()
-
-
-def write_expire(who: str, mode: Mode, expire_at: datetime, conn: sqlite3.Connection):
+def write_lock(who: str, mode: Mode, expire_at: datetime, conn: sqlite3.Connection):
     cur = conn.cursor()
     cur.execute(
-        defs.SQL.UPSERT,
+        UPSERT,
         {"who": who, "shared": mode == Mode.SHARED, "expire_at": expire_at},
     )
     assert cur.rowcount == 1
@@ -53,7 +48,7 @@ def get_status(conn: sqlite3.Connection) -> Optional[LockStatus]:
     now = datetime.now()
 
     cur = conn.cursor()
-    cur.execute(defs.SQL.QUERY_SHARED, {"now": now})
+    cur.execute(QUERY_SHARED, {"now": now})
     rows = cur.fetchall()
     if len(rows) > 0:
         cur.close()
@@ -62,7 +57,7 @@ def get_status(conn: sqlite3.Connection) -> Optional[LockStatus]:
             user_expires={row["user"]: row["expire_at"] for row in rows},
         )
 
-    cur.execute(defs.SQL.QUERY_EXCLUSIVE, {"now": now})
+    cur.execute(QUERY_EXCLUSIVE, {"now": now})
     row = cur.fetchone()
     if row is not None:
         cur.close()
@@ -84,7 +79,7 @@ def revoke(who, conn: sqlite3.Connection) -> Optional[Mode]:
         return None
 
     cur = conn.cursor()
-    cur.execute(defs.SQL.RELEASE, {"who": who})
+    cur.execute(RELEASE, {"who": who})
     assert cur.rowcount == 1
     cur.close()
     conn.commit()
@@ -102,7 +97,7 @@ def grant(
 
     # Case 1: if no lock is granted, simply grant one
     if status is None:
-        write_expire(who, wanted, attempted_expire, conn)
+        write_lock(who, wanted, attempted_expire, conn)
         conn.commit()
 
         result.curr_mode = wanted
@@ -116,12 +111,9 @@ def grant(
         if (wanted == Mode.SHARED and status.mode == Mode.EXCLUSIVE) or (
             wanted == Mode.EXCLUSIVE and len(status.user_expires) > 0
         ):
-            raise errors.RuntimeErrorWithMessageAndCode(
-                defs.Message.GRANT_FAILURE_MSG,
-                defs.Message.GRANT_FAILURE_CODE,
-            )
+            raise GrantmeError(GRANT_FAILURE_MSG, GRANT_FAILURE_CODE)
 
-        write_expire(who, wanted, attempted_expire, conn)
+        write_lock(who, wanted, attempted_expire, conn)
         conn.commit()
 
         result.curr_mode = wanted
@@ -138,13 +130,10 @@ def grant(
     # try upgrade
     if result.prev_mode == Mode.SHARED and wanted == Mode.EXCLUSIVE:
         if len(status.user_expires) > 1:
-            raise errors.RuntimeErrorWithMessageAndCode(
-                defs.Message.UPGRADE_FAILURE_MSG,
-                defs.Message.UPGRADE_FAILURE_CODE,
-            )
+            raise GrantmeError(UPGRADE_FAILURE_MSG, UPGRADE_FAILURE_CODE)
 
         cur = conn.cursor()
-        cur.execute(defs.SQL.UPGRADE, {"who": who})
+        cur.execute(UPGRADE, {"who": who})
         assert cur.rowcount == 1
         cur.close()
 
@@ -158,7 +147,7 @@ def grant(
     if old_expire > attempted_expire:
         result.curr_expire_at = old_expire
     else:
-        write_expire(who, wanted, attempted_expire, conn)
+        write_lock(who, wanted, attempted_expire, conn)
         result.curr_expire_at = attempted_expire
 
     conn.commit()
@@ -181,7 +170,7 @@ def print_status(you: str, conn: sqlite3.Connection):
             )
         else:
             printers.show_granted("Exclusive", expire_at, others=[user])
-            printers.warning(defs.Message.DO_NOT_DISTURB)
+            printers.warning(DO_NOT_DISTURB)
     else:
         last_expire = max(status.user_expires.values())
         if you in status.user_expires:
@@ -203,7 +192,7 @@ def print_status(you: str, conn: sqlite3.Connection):
 def revoke_and_print_result(who, conn: sqlite3.Connection):
     result = revoke(who, conn)
     if result is None:
-        printers.warning(defs.Message.NOTHING_REVOKED)
+        printers.warning(NOTHING_REVOKED)
     elif result == Mode.EXCLUSIVE:
         printers.show_revoke_ok("exclusive", who)
     else:
@@ -223,15 +212,15 @@ def grant_and_print_result(
 
         if result.prev_mode == Mode.EXCLUSIVE and want_shared:
             assert result.curr_mode == Mode.EXCLUSIVE
-            printers.warning(defs.Message.ATTEMP_SLOCK_WITH_XLOCK)
+            printers.warning(ATTEMPT_SLOCK_WITH_XLOCK)
 
         if result.prev_mode == Mode.SHARED and result.curr_mode == Mode.EXCLUSIVE:
-            printers.ok(defs.Message.UPGRADE_OK)
+            printers.ok(UPGRADE_OK)
 
         if result.prev_expire_at == result.curr_expire_at:
-            printers.warning(defs.Message.ATTEMP_SHORTER_DURATION_THAN_ALREADY_GRANTED)
+            printers.warning(ATTEMPT_SHORTER_DURATION_THAN_ALREADY_GRANTED)
         else:
-            printers.ok(defs.Message.PROLONG_OK)
+            printers.ok(PROLONG_OK)
         printers.show_expire(result.curr_expire_at, "Your")
 
     # when called without a lock already held

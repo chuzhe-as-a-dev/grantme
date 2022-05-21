@@ -31,12 +31,6 @@ class GrantResult:
     prev_expire_at: Optional[datetime]
 
 
-def setup(dir: str, db_filename: str):
-    Path.mkdir(dir, parents=True, exist_ok=True)
-    conn = sqlite3.connect(join(dir, db_filename))
-    setup_db(conn)
-
-
 def setup_db(conn: sqlite3.Connection):
     cur = conn.cursor()
     cur.execute(defs.SQL.CREATE_DB)

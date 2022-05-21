@@ -1,11 +1,11 @@
 from os.path import join
-
+from pathlib import Path
 
 PROG = "grantme"
 
-DATA_DIR = "/var/lib/grantme"
+DATA_DIR = Path("/var/lib/grantme")
 DB_FILENAME = "db.sqlite3"
-DB_FILE = join(DATA_DIR, "db.sqlite3")
+DB_FILE = DATA_DIR / DB_FILENAME
 
 
 class SQL:
@@ -51,14 +51,18 @@ class Message:
         )
     )
     DURATION_HELP = (
-        'Expected aceess duration, formated as "?w?d?h?m?s".'
+        'Expected aceess duration, formated as "?w?d?h?m?s". '
         'Default to "30m". You can rerun {prog} to prolong permission.'.format(
             prog=PROG
         )
     )
     USER_HELP = (
-        "The user whose permissions should be revoked."
+        "The user whose permissions should be revoked. "
         "Defaults to the current login user."
+    )
+    INIT_HELP = (
+        "Initialize the backend database. "
+        "Root privilege might be needed (i.e., `sudo`)."
     )
 
     # Info

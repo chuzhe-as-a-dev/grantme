@@ -58,7 +58,7 @@ def show_granted(mode, expire, highlighted_user=None, others=[]):
         if len(others) > 0:
             who += ", "
             who += ", ".join(others)
-    print("\t" + who)
+    print("\t" + who + ",")
     print(
         "(the last of) which expires at "
         + FormatCode.BOLD

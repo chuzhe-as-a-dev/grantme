@@ -160,7 +160,7 @@ def print_status(you: str, conn: sqlite3.Connection):
     if status is None:
         printers.show_no_lock()
     elif status.mode == Mode.EXCLUSIVE:
-        user, expire_at = status.user_expires.items()[0]
+        user, expire_at = next(iter(status.user_expires.items()))
         if user == you:
             printers.show_granted(
                 "Exclusive", expire_at, highlighted_user=user + " (YOU)"

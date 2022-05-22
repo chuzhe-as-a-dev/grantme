@@ -16,7 +16,7 @@ QUERY_EXCLUSIVE = (
 )
 UPSERT = (
     "insert into leases values (:who, :shared, :expire_at)"
-    "  on conflict do update set shared=:shared, expire_at=:expire_at;"
+    "  on conflict(user) do update set shared=:shared, expire_at=:expire_at;"
 )
 UPGRADE = "update leases set shared = false where user = :who and shared = true;"
 RELEASE = "delete from leases where user = :who;"

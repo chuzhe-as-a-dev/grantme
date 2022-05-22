@@ -79,9 +79,10 @@ Automatically printing access status upon user login requires Ubuntu Linux distr
 
 ### 安装与卸载 || Installation and uninstallation
 
-安装并初始化：
+运行以下命令以安装并初始化。注意，如果你使用`pyenv`等虚拟环境，请注意检查`grantme`是否为全局安装，以便其他用户使用。
 
-To install and initialize:
+Run the following commands to install and initialize.
+If you are using virtual environments like `pyenv`, please make sure `grantme` is installed globally, so that other users can access it.
 
 ```shell
 pip3 install grantme

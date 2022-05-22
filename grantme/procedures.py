@@ -4,8 +4,6 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum, auto
-from os.path import join
-from pathlib import Path
 from typing import Mapping, Optional
 
 from grantme.constants.msgs import *

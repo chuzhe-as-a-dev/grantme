@@ -14,7 +14,7 @@ from grantme.procedures import (
     print_status,
     revoke_and_print_result,
 )
-from grantme.utils.errors import GrantmeError, UNEXPECTED_ERROR_CODE
+from grantme.utils.errors import UNEXPECTED_ERROR_CODE, GrantmeError
 from grantme.utils.printers import error
 from grantme.utils.setup import create_db, create_motd
 

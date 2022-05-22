@@ -1,88 +1,122 @@
-`grantme`是一个用python写的轻量级machine lock manager，用于**取代现有基于微信群的机器使用权限管理方式**。
+# 轻量级权限管理工具：grantme || Lightweight access management tool: grantme
 
-- [使用方式](#使用方式)
-  - [查看当前拿锁状态](#查看当前拿锁状态)
-  - [获得共享、独占权限，升级为独占权限，以及延长授权时常](#获得共享独占权限升级为独占权限以及延长授权时常)
-  - [放锁](#放锁)
-  - [在脚本中使用](#在脚本中使用)
-- [安装、更新、删除脚本](#安装更新删除脚本)
-- [返回值](#返回值)
-- [测试](#测试)
+`grantme`是一个用python写的轻量级机器访问管理命令行工具。它可以授权用户一定时限内的共享访问权限（如，用于debug）和独占访问权限（如，用于性能测试），从而共享同一台机器的用户可以协调机器使用。它是非强制、纯建议性的因为它不能放置恶意用户无视访问权限授权地使用机器。
 
-## 使用方式
+`grantme` is a lightweight machine access management CLI tool written in Python.
+It can grant timed *shared access* (e.g., for debugging) and *exclusive access* (e.g., for performance evaluation) to individual users so that when users of shared machines can coordinate their usage.
+It is noncompulsory and purely advisory because it cannot prevent malicious users from ignoring the access granted.
 
-### 查看当前拿锁状态
+---
 
-每次登陆服务器机器，shell会自动显示以下消息。
+- [使用方式 || Usage](#使用方式--usage)
+  - [规则 || Rules](#规则--rules)
+  - [返回值 || Return values](#返回值--return-values)
+  - [依赖 || Requirements](#依赖--requirements)
+  - [安装与卸载 || Installation and uninstallation](#安装与卸载--installation-and-uninstallation)
+- [参与开发 || Contribute](#参与开发--contribute)
+  - [测试 || Testing](#测试--testing)
 
-![login-status-screenshot](screenshots/login-status.png)
+## 使用方式 || Usage
 
-你也可以通过`grantme --status`命令手动查看。
+![overview](screenshots/all-in-one.png)
 
-![manual-status-screenshot](screenshots/manual-status.png)
+### 规则 || Rules
 
-### 获得共享、独占权限，升级为独占权限，以及延长授权时常
+1. 当未授权任何访问权限时，用户可任意获取共享或独占全县。
 
-你可以通过`grantme --mode {shared,exclusive} [--duration ?d?h?m?s]`获得当前机器一定时间内的使用权限。不指定时常时，默认为30分钟。
+   When no access is granted, users can require either shared or exclusive access.
 
-![acquire-screenshot](screenshots/acquire.png)
+2. 当已授予共享访问时，未授权用户可获取共享权限。若仅一位用户被授予共享权限，该用户可升级其为独占权限。
 
-如上图所示，当只有本人持有共享权限时，再次调用`grantme --mode exclusive`自动将本人权限升级为独占权限。
+   When some shared access is granted, other users can require additional shared access.
+   When there is only one user granted with shared access, that user can upgrade his/her access to be exclusive.
 
-如上图所示，在已拥有共享或独占权限时，再次调用`grantme`时，授权时常会被延长。
+3. 当已授予独占访问时，未授权用户不可获取任何权限。
 
-### 放锁
+   When exclusive access is granted, other users cannot require any access.
 
-你可以通过`grantme --revoke`释放自己的共享或独占权限。
-管理员可以通过`sudo grantme --revoke --user <USER>`释放指定用户的共享或独占权限。
+4. 权限在过期后自动失效。已授予权限的用户可提前放弃或延长所持有权限。
 
-### 在脚本中使用
+   Grated access expires after given duration.
+   Users with granted access can early revoke or prolong their access.
 
-请在脚本的开头拿锁，并在脚本的末尾放锁，示例代码如下：
-(注意：锁可能在脚本完成前失效，请再次检查你的运行结果或者为你的脚本申请足够的时间)
+### 返回值 || Return values
+
+`grantme`根据操作结果返回相应值。
+
+`grantme` returns values according to operation results.
+
+- 0：成功 || Success
+- 6：升级权限失败 || Failed to upgrade access
+- 7：获取权限失败 || Failed to obtain access
+- 255：其他错误 || Other errors
+
+这些返回值可于集成`grantme`于其他脚本（如，自动化测试）。
+
+These return values can be used for integrating `grantme` into other scripts (e.g., automatic testing).
+
 ```shell
 #!/bin/bash
-# Get lock
-./grantme -m exclusive -d 1h
+
+./grantme --mode exclusive --duration 1h
 if [ $? -ne 0 ]
 then
     echo "I can't get the lock, cry cry."
     exit 1
 fi
 
-echo "I get the lock, I'm going to work."
+# do work
 
-# Release lock
-./grantme -r 
+./grantme --revoke
 ```
 
-## 安装、更新、删除脚本
+### 依赖 || Requirements
 
-将本仓库clone到任意位置，在仓库根目录下运行`sudo sh install.sh`即可。
-该脚本会创建必须的锁信息存放目录（`/var/lib/grantme`），并将`grantme`本体hard link至`/usr/local/bin/grantme`。
+`grantme`要求Python 3.7级以上版本。用户登陆是自动打印授权状态功能需要Ubuntu Linux发行版。
 
-在仓库根目录下pull最新commit，即可完成更新（通过hard link）。
+`grantme` requires Python 3.7+.
+Automatically printing access status upon user login requires Ubuntu Linux distribution.
 
-在仓库根目录下运行`sudo sh uninstall.sh`即可删除脚本与相关文件。
+### 安装与卸载 || Installation and uninstallation
 
-## 返回值
+安装并初始化：
 
-- 0：操作（拿锁、升级、延时、放锁）成功
-- 1：元数据目录不存在（安装错误，遇到请联系管理员）
-- 2：存在多个独占权限的用户（不应出现的错误，遇到请联系管理员）
-- 4：并发冲突，需重试
-- 6：升级锁失败
-- 7：拿锁失败
-- 255：其他错误
-- 3：放锁失败（未实现）
-- 5：延时失败（未实现）
+To install and initialize:
 
-## 测试
+```shell
+pip3 install grantme
+grantme --init  # 可能需要sudo权限 || potentially requires sudo privilege
+```
 
-增加新功能、修补漏洞后请在`tests`目录下增加或修改相应测试，并在项目根目录下执行
+`grantme --init`会创建`/var/lib/grantme`目录，并在Ubuntu Linux发行版下在`/etc/update-motd.d`生成`<NN>-grantme-status`（`<NN>`数字，具体值由机器状态决定）脚本文件用于用户登录时打印授权状态。卸载时需手动删除：
+
+`grantme --init` creates `/var/lib/grantme` directory，and under Ubuntu Linux distribution it creates `<NN>-grantme-status` (`<NN>` are numbers, whose exact values depend on the machines) script file under `/etc/update-motd.d` directory for automatically printing access status upon user login.
+To uninstall, you need to manually remove them:
+
+```shell
+# 可能需要sudo权限 || potentially requires sudo privilege
+rm -r /var/lib/grantme
+rm /etc/update-motd.d/<NN>-grantme-status  # 将<NN>替换为具体数值 || replace <NN> with the actual numbers
+```
+
+## 参与开发 || Contribute
+
+目前，`grantme`由个人维护。欢迎用户提交缺陷报告和Pull Request。
+
+Currently, `grantme` is maintained by an individual.
+Bug reports and pull requests are welcomed.
+
+### 测试 || Testing
+
+在项目根目录下执行以下命令以运行测试。
+
+Execute the following command in the project's root directory to run tests.
 
 ```shell
 python -m unittest discover
 ```
 
-确保所有测试通过。
+增加新功能、修补漏洞后请在`tests`目录下增加或修改相应测试。在所有测试通过后提交Pull Request。
+
+Please add or modify test cases under the `tests` directory when adding new features or fixing bugs.
+Make sure all tests have passed before submitting pull requests.

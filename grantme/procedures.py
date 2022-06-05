@@ -152,6 +152,15 @@ def grant(
     return result
 
 
+def list_users(you: str, conn: sqlite3.Connection):
+    status = get_status(conn)
+    if status is None:
+        return
+
+    print(", ".join(status.user_expires.keys()))
+    print(max(status.user_expires.values()))
+
+
 def print_status(you: str, conn: sqlite3.Connection):
     status = get_status(conn)
 

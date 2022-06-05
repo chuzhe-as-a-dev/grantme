@@ -11,6 +11,7 @@ from grantme.constants.misc import PROG
 from grantme.constants.msgs import DURATION_HELP, INIT_HELP, PROG_HELP, USER_HELP
 from grantme.procedures import (
     grant_and_print_result,
+    list_users,
     print_status,
     revoke_and_print_result,
 )
@@ -37,6 +38,7 @@ def main():
     parser.add_argument("-r", "--revoke", action="store_true")
     parser.add_argument("-u", "--user", default=current_user, help=USER_HELP)
     parser.add_argument("-i", "--init", action="store_true", help=INIT_HELP)
+    parser.add_argument("-l", "--list", action="store_true")
 
     args = parser.parse_args()
 
@@ -65,6 +67,8 @@ def main():
             pass  # to prevent printing CLI help message... should fix parser later!
         elif args.status:
             print_status(current_user, conn)
+        elif args.list:
+            list_users(conn)
         elif args.revoke:
             revoke_and_print_result(args.user, conn)
         elif args.mode is not None:

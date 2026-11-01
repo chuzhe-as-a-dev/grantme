@@ -84,7 +84,7 @@ The maintainer clones this repository to a location readable by all users (denot
 The database resides in `/scratch/grantme` by default (configurable via the `GRANTME_DIR` environment variable) and is readable and writable to all users.
 
 ```shell
-git clone git@ipads.sjtu.edu.cn:t.chuzhe/grant-me.git <GRANTME_HOME>
+git clone <REPO_URL> <GRANTME_HOME>
 <GRANTME_HOME>/bin/grantme --init  # 每台机器一次 || once per machine
 ```
 

@@ -13,6 +13,11 @@ from grantme.utils.errors import *
 from .utils import printers, timer
 
 
+# explicit replacements of the default adapter/converter deprecated in Python 3.12
+sqlite3.register_adapter(datetime, lambda dt: dt.isoformat(" "))
+sqlite3.register_converter("timestamp", lambda b: datetime.fromisoformat(b.decode()))
+
+
 class Mode(Enum):
     EXCLUSIVE = auto()
     SHARED = auto()
@@ -152,7 +157,7 @@ def grant(
     return result
 
 
-def list_users(you: str, conn: sqlite3.Connection):
+def list_users(conn: sqlite3.Connection):
     status = get_status(conn)
     if status is None:
         return

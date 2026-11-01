@@ -8,14 +8,18 @@ PROG_HELP = (
     "is necessarily required to access the host. Its purpose is to make you "
     "aware of the presence of other active users so that you don't disrupt "
     "their work.\n\n"
-    "Use `{prog} --mode {{exclusive,shared}} --duration 2h30m to obtain/prolong"
+    "Use `{prog} --mode {{exclusive,shared}} --duration 2h30m` to obtain/prolong "
     "permission for 2 hours and 30 minutes.\n"
     "Use `{prog} --revoke` to invalidate your granted permission.\n"
-    "Use `{prog} --revoke --user USER` to invalidate other users' granted"
+    "Use `{prog} --revoke --user USER` to invalidate other users' granted "
     "permission.\n"
     "Use `{prog} --status` to view permissions of yours and other users'.".format(
         prog=PROG
     )
+)
+INIT_HELP = (
+    "Initialize the backend database. Run once by the maintainer when deploying to a"
+    " machine."
 )
 DURATION_HELP = (
     'Expected access duration, formatted as "?w?d?h?m?s". Default to "30m". You can'
@@ -23,9 +27,6 @@ DURATION_HELP = (
 )
 USER_HELP = (
     "The user whose permissions should be revoked. Defaults to the current login user."
-)
-INIT_HELP = (
-    "Initialize the backend database. Root privilege might be needed (i.e., `sudo`)."
 )
 
 # Info
@@ -41,6 +42,6 @@ ATTEMPT_SLOCK_WITH_XLOCK = (
     "An exclusive permission already exists. Ignoring `--mode shared`."
 )
 ATTEMPT_SHORTER_DURATION_THAN_ALREADY_GRANTED = (
-    "A permission that expires later than the given duration already exists."
+    "A permission that expires later than the given duration already exists. "
     "No change is made."
 )

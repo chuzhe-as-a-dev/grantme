@@ -30,7 +30,7 @@ def xlock_guide():
 
 
 def show_no_lock():
-    print("Neither exclusive nor shared access is not granted yet.")
+    print("Neither exclusive nor shared access is granted yet.")
     slock_guide()
     xlock_guide()
 

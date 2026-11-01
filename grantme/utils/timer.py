@@ -1,10 +1,12 @@
 import re
 from datetime import timedelta
 
+from grantme.utils.errors import UNEXPECTED_ERROR_CODE, GrantmeError
+
 EXPIRE_FORMAT = "%Y-%m-%d %H:%M:%S"
 DELTA_REGEX = re.compile(
     r"^((?P<weeks>[\.\d]+?)w)? *"
-    r"^((?P<days>[\.\d]+?)d)? *"
+    r"((?P<days>[\.\d]+?)d)? *"
     r"((?P<hours>[\.\d]+?)h)? *"
     r"((?P<minutes>[\.\d]+?)m)? *"
     r"((?P<seconds>[\.\d]+?)s?)?$"
@@ -21,12 +23,12 @@ def parse_delta(delta_str):
     :return datetime.timedelta: A datetime.timedelta object
     """
     parts = DELTA_REGEX.match(delta_str)
-    assert (
-        parts is not None
-    ), """Could not parse any time information from '{}'.
-    Examples of valid strings: '8h', '2d 8h 5m 2s', '2m4.3s'""".format(
-        delta_str
-    )
+    if parts is None:
+        raise GrantmeError(
+            "Could not parse any time information from '{}'. Examples of valid"
+            " strings: '8h', '2d 8h 5m 2s', '2m4.3s'".format(delta_str),
+            UNEXPECTED_ERROR_CODE,
+        )
     time_params = {
         name: float(param) for name, param in parts.groupdict().items() if param
     }

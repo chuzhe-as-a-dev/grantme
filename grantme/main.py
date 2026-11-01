@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import sqlite3
 import sys
 from getpass import getuser
@@ -16,12 +17,12 @@ from grantme.procedures import (
     revoke_and_print_result,
 )
 from grantme.utils.errors import UNEXPECTED_ERROR_CODE, GrantmeError
-from grantme.utils.printers import error
-from grantme.utils.setup import create_db, create_motd
+from grantme.utils.printers import error, ok
+from grantme.utils.setup import create_db
 
 
 DB_FILENAME = "db.sqlite3"
-DATA_DIR = Path("/var/lib/grantme")
+DATA_DIR = Path(os.environ.get("GRANTME_DIR", "/scratch/grantme"))
 DB_FILE = DATA_DIR / DB_FILENAME
 
 
@@ -37,8 +38,8 @@ def main():
     parser.add_argument("-d", "--duration", default="30m", help=DURATION_HELP)
     parser.add_argument("-r", "--revoke", action="store_true")
     parser.add_argument("-u", "--user", default=current_user, help=USER_HELP)
-    parser.add_argument("-i", "--init", action="store_true", help=INIT_HELP)
     parser.add_argument("-l", "--list", action="store_true")
+    parser.add_argument("-i", "--init", action="store_true", help=INIT_HELP)
 
     args = parser.parse_args()
 
@@ -47,25 +48,34 @@ def main():
             create_db(DATA_DIR, DB_FILE)
         except Exception as err:
             error(
-                "Failed to initiate the database. Please ensure that you have root"
-                f" privilege for creating {DB_FILE} file. To resolve corrupted"
+                "Failed to initiate the database. Please ensure that you have write"
+                f" permission for creating {DB_FILE} file. To resolve corrupted"
                 f" database files, you may remove {DB_FILE} and then run"
                 f" `{PROG} --init` to create a new one."
             )
             error(f"Original exception: {err}")
             sys.exit(UNEXPECTED_ERROR_CODE)
+        ok(f"Database initiated at {DB_FILE}.")
+        sys.exit(0)
 
-        create_motd()
+    if not DB_FILE.exists():
+        error(
+            f"Database {DB_FILE} does not exist. Please ask the maintainer to run"
+            f" `{PROG} --init`."
+        )
+        sys.exit(UNEXPECTED_ERROR_CODE)
 
+    conn = None
     try:
         exit_code = 0
 
         conn = sqlite3.connect(str(DB_FILE), detect_types=sqlite3.PARSE_DECLTYPES)
         conn.row_factory = sqlite3.Row
+        # hold the write lock from reading status to writing leases, so that
+        # concurrent invocations cannot both pass the checks
+        conn.execute("begin immediate")
 
-        if args.init:
-            pass  # to prevent printing CLI help message... should fix parser later!
-        elif args.status:
+        if args.status:
             print_status(current_user, conn)
         elif args.list:
             list_users(conn)
@@ -77,7 +87,7 @@ def main():
                 current_user, args.mode == "shared", args.duration, conn
             )
         else:
-            parser.print_help()
+            print_status(current_user, conn)
     except GrantmeError as err:
         error(err.msg)
         exit_code = err.code
@@ -86,7 +96,8 @@ def main():
         print_tb(err.__traceback__)
         exit_code = UNEXPECTED_ERROR_CODE
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()
         sys.exit(exit_code)
 
 

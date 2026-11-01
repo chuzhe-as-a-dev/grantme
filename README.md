@@ -58,7 +58,7 @@ These return values can be used for integrating `grantme` into other scripts (e.
 ```shell
 #!/bin/bash
 
-./grantme --mode exclusive --duration 1h
+grantme --mode exclusive --duration 1h
 if [ $? -ne 0 ]
 then
     echo "I can't get the lock, cry cry."
@@ -67,37 +67,42 @@ fi
 
 # do work
 
-./grantme --revoke
+grantme --revoke
 ```
 
 ### 依赖 || Requirements
 
-`grantme`要求Python 3.7级以上版本。用户登陆是自动打印授权状态功能需要Ubuntu Linux发行版。
+`grantme`要求Python 3.7级以上版本，无需安装第三方依赖，也无需root权限。
 
-`grantme` requires Python 3.7+.
-Automatically printing access status upon user login requires Ubuntu Linux distribution.
+`grantme` requires Python 3.7+, with no third-party dependencies and no root privilege.
 
 ### 安装与卸载 || Installation and uninstallation
 
-运行以下命令以安装并初始化。注意，如果你使用`pyenv`等虚拟环境，请注意检查`grantme`是否为全局安装，以便其他用户使用。
+管理者将本仓库克隆到一个所有用户可读的位置（以下记为`<GRANTME_HOME>`），更新时在该处`git pull`即可，并在每台机器上运行一次`grantme --init`以创建数据库。数据库默认位于`/scratch/grantme`（可用环境变量`GRANTME_DIR`修改），对所有用户开放读写。
 
-Run the following commands to install and initialize.
-If you are using virtual environments like `pyenv`, please make sure `grantme` is installed globally, so that other users can access it.
+The maintainer clones this repository to a location readable by all users (denoted `<GRANTME_HOME>` below), updates it there with `git pull`, and runs `grantme --init` once on each machine to create the database.
+The database resides in `/scratch/grantme` by default (configurable via the `GRANTME_DIR` environment variable) and is readable and writable to all users.
 
 ```shell
-pip3 install grantme
-grantme --init  # 可能需要sudo权限 || potentially requires sudo privilege
+git clone git@ipads.sjtu.edu.cn:t.chuzhe/grant-me.git <GRANTME_HOME>
+<GRANTME_HOME>/bin/grantme --init  # 每台机器一次 || once per machine
 ```
 
-`grantme --init`会创建`/var/lib/grantme`目录，并在Ubuntu Linux发行版下在`/etc/update-motd.d`生成`<NN>-grantme-status`（`<NN>`数字，具体值由机器状态决定）脚本文件用于用户登录时打印授权状态。卸载时需手动删除：
+每位用户在`~/.bashrc`中加入以下内容，以使用`grantme`并在登录时自动打印授权状态：
 
-`grantme --init` creates `/var/lib/grantme` directory，and under Ubuntu Linux distribution it creates `<NN>-grantme-status` (`<NN>` are numbers, whose exact values depend on the machines) script file under `/etc/update-motd.d` directory for automatically printing access status upon user login.
-To uninstall, you need to manually remove them:
+Each user adds the following to `~/.bashrc` to use `grantme` and automatically print access status upon login:
 
 ```shell
-# 可能需要sudo权限 || potentially requires sudo privilege
-rm -r /var/lib/grantme
-rm /etc/update-motd.d/<NN>-grantme-status  # 将<NN>替换为具体数值 || replace <NN> with the actual numbers
+export PATH="<GRANTME_HOME>/bin:$PATH"
+[ -t 1 ] && grantme --status
+```
+
+卸载时删除`<GRANTME_HOME>`、数据目录以及各用户`~/.bashrc`中的对应行：
+
+To uninstall, remove `<GRANTME_HOME>`, the data directory, and the lines in each user's `~/.bashrc`:
+
+```shell
+rm -rf <GRANTME_HOME> /scratch/grantme
 ```
 
 ## 参与开发 || Contribute

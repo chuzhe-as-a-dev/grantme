@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import shutil
 import socket
 import sqlite3
 import sys
@@ -19,7 +20,7 @@ from grantme.procedures import (
 )
 from grantme.utils.config import read_data_dir
 from grantme.utils.errors import UNEXPECTED_ERROR_CODE, GrantmeError
-from grantme.utils.printers import error, ok
+from grantme.utils.printers import error, ok, show_path_hint
 from grantme.utils.setup import create_db
 
 
@@ -30,12 +31,17 @@ CONF_FILENAME = "grantme.conf"
 
 def main():
     current_user = getuser()
+    bin_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+    # not installed globally, so remind users who call it by its full path
+    if shutil.which(PROG) is None:
+        show_path_hint(bin_dir)
 
     # GRANTME_DIR overrides the config file (used by tests)
     if "GRANTME_DIR" in os.environ:
         data_dir = Path(os.environ["GRANTME_DIR"])
     else:
-        conf_file = Path(os.path.realpath(sys.argv[0])).parent / CONF_FILENAME
+        conf_file = Path(bin_dir) / CONF_FILENAME
         data_dir = read_data_dir(conf_file, socket.gethostname().split(".")[0])
     db_file = data_dir / DB_FILENAME
 

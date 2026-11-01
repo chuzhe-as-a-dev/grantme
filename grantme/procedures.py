@@ -123,7 +123,14 @@ def grant(
         if (wanted == Mode.SHARED and status.mode == Mode.EXCLUSIVE) or (
             wanted == Mode.EXCLUSIVE and len(status.user_expires) > 0
         ):
-            raise GrantmeError(GRANT_FAILURE_MSG, GRANT_FAILURE_CODE)
+            raise GrantmeError(
+                GRANT_FAILURE_MSG.format(
+                    wanted=wanted.name.lower(),
+                    mode=status.mode.name.lower(),
+                    holders=printers.format_holders(status.user_expires),
+                ),
+                GRANT_FAILURE_CODE,
+            )
 
         write_lock(who, wanted, attempted_expire, conn)
         conn.commit()
@@ -142,7 +149,15 @@ def grant(
     # try upgrade
     if result.prev_mode == Mode.SHARED and wanted == Mode.EXCLUSIVE:
         if len(status.user_expires) > 1:
-            raise GrantmeError(UPGRADE_FAILURE_MSG, UPGRADE_FAILURE_CODE)
+            others = {
+                user: expire_at
+                for user, expire_at in status.user_expires.items()
+                if user != who
+            }
+            raise GrantmeError(
+                UPGRADE_FAILURE_MSG.format(holders=printers.format_holders(others)),
+                UPGRADE_FAILURE_CODE,
+            )
 
         cur = conn.cursor()
         cur.execute(UPGRADE, {"who": who})
@@ -181,30 +196,15 @@ def print_status(you: str, conn: sqlite3.Connection):
     printers.show_sep_line()
 
     if status is None:
-        printers.show_no_lock()
-    elif status.mode == Mode.EXCLUSIVE:
-        user, expire_at = next(iter(status.user_expires.items()))
-        if user == you:
-            printers.show_granted(
-                "Exclusive", expire_at, highlighted_user=user + " (YOU)"
-            )
-        else:
-            printers.show_granted("Exclusive", expire_at, others=[user])
-            printers.warning(DO_NOT_DISTURB)
+        printers.show_free()
     else:
-        last_expire = max(status.user_expires.values())
-        if you in status.user_expires:
-            others = list(status.user_expires.keys())
-            others.remove(you)
-            printers.show_granted(
-                "Shared", last_expire, highlighted_user=you + " (YOU)", others=others
-            )
-            printers.show_expire(status.user_expires[you], "Your")
-        else:
-            printers.show_granted(
-                "Shared", last_expire, others=status.user_expires.keys()
-            )
-            printers.slock_guide()
+        exclusive = status.mode == Mode.EXCLUSIVE
+        printers.show_holders(exclusive, status.user_expires, you)
+        if you not in status.user_expires:
+            if exclusive:
+                printers.warning(DO_NOT_DISTURB)
+            else:
+                printers.slock_guide()
 
     printers.show_sep_line()
 
@@ -212,41 +212,36 @@ def print_status(you: str, conn: sqlite3.Connection):
 def revoke_and_print_result(who, conn: sqlite3.Connection):
     result = revoke(who, conn)
     if result is None:
-        printers.warning(NOTHING_REVOKED)
-    elif result == Mode.EXCLUSIVE:
-        printers.show_revoke_ok("exclusive", who)
+        printers.warning(NOTHING_REVOKED.format(who=who))
     else:
-        printers.show_revoke_ok("shared", who)
+        printers.ok(REVOKE_OK.format(who=who, mode=result.name.lower()))
 
 
 def grant_and_print_result(
     who: str, want_shared: bool, duration: str, conn: sqlite3.Connection
 ):
     result = grant(who, Mode.SHARED if want_shared else Mode.EXCLUSIVE, duration, conn)
+    assert result.curr_mode is not None
+    assert result.curr_expire_at is not None
 
-    # when called with a lock already held
-    if result.prev_mode is not None:
-        assert result.curr_mode is not None
-        assert result.prev_expire_at is not None
-        assert result.curr_expire_at is not None
-
-        if result.prev_mode == Mode.EXCLUSIVE and want_shared:
-            assert result.curr_mode == Mode.EXCLUSIVE
-            printers.warning(ATTEMPT_SLOCK_WITH_XLOCK)
-
-        if result.prev_mode == Mode.SHARED and result.curr_mode == Mode.EXCLUSIVE:
-            printers.ok(UPGRADE_OK)
-
-        if result.prev_expire_at == result.curr_expire_at:
-            printers.warning(ATTEMPT_SHORTER_DURATION_THAN_ALREADY_GRANTED)
-        else:
-            printers.ok(PROLONG_OK)
-        printers.show_expire(result.curr_expire_at, "Your")
+    fields = {
+        "who": who,
+        "mode": result.curr_mode.name.lower(),
+        "until": printers.format_until(result.curr_expire_at, highlight=False),
+    }
 
     # when called without a lock already held
+    if result.prev_mode is None:
+        printers.ok(GRANT_OK.format(**fields))
+        return
+
+    # when called with a lock already held
+    if result.prev_mode == Mode.EXCLUSIVE and want_shared:
+        printers.warning(ATTEMPT_SLOCK_WITH_XLOCK.format(**fields))
+
+    if result.prev_mode == Mode.SHARED and result.curr_mode == Mode.EXCLUSIVE:
+        printers.ok(UPGRADE_OK.format(**fields))
+    elif result.prev_expire_at == result.curr_expire_at:
+        printers.warning(ATTEMPT_SHORTER_DURATION_THAN_ALREADY_GRANTED.format(**fields))
     else:
-        if result.curr_mode is not None:
-            assert result.prev_expire_at is None
-            assert result.curr_expire_at is not None
-            printers.show_grant_ok("shared" if want_shared else "exclusive", who)
-            printers.show_expire(result.curr_expire_at, "Your")
+        printers.ok(PROLONG_OK.format(**fields))

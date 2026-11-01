@@ -30,18 +30,17 @@ USER_HELP = (
 )
 
 # Info
+GRANT_CMD = "{prog} --mode {{shared,exclusive}} --duration ?d?h?m?s".format(prog=PROG)
 SLOCK_CMD = "{prog} --mode shared --duration ?d?h?m?s".format(prog=PROG)
-XLOCK_CMD = "{prog} --mode exclusive --duration ?d?h?m?s".format(prog=PROG)
-PROLONG_OK = "Permission is successfully prolonged."
-UPGRADE_OK = "Shared permission upgraded to an exclusive permission."
+GRANT_OK = "Granted {mode} access to {who} {until}."
+PROLONG_OK = "Prolonged {who}'s {mode} access {until}."
+UPGRADE_OK = "Upgraded {who}'s access to exclusive {until}."
+REVOKE_OK = "Revoked {who}'s {mode} access."
 
 # Warnings
-DO_NOT_DISTURB = "Please **AVOID DEMANDING TASKS**, so as to not disrupt others."
-NOTHING_REVOKED = "No permission is currently granted; nothing is revoked."
-ATTEMPT_SLOCK_WITH_XLOCK = (
-    "An exclusive permission already exists. Ignoring `--mode shared`."
-)
+DO_NOT_DISTURB = "Please AVOID DEMANDING TASKS so as not to disrupt them."
+NOTHING_REVOKED = "{who} holds no access; nothing is revoked."
+ATTEMPT_SLOCK_WITH_XLOCK = "{who} already holds exclusive access; keeping it exclusive."
 ATTEMPT_SHORTER_DURATION_THAN_ALREADY_GRANTED = (
-    "A permission that expires later than the given duration already exists. "
-    "No change is made."
+    "{who}'s {mode} access already lasts longer; unchanged {until}."
 )

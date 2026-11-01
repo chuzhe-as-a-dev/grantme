@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import socket
 import sqlite3
 import sys
 from getpass import getuser
@@ -16,18 +17,27 @@ from grantme.procedures import (
     print_status,
     revoke_and_print_result,
 )
+from grantme.utils.config import read_data_dir
 from grantme.utils.errors import UNEXPECTED_ERROR_CODE, GrantmeError
 from grantme.utils.printers import error, ok
 from grantme.utils.setup import create_db
 
 
 DB_FILENAME = "db.sqlite3"
-DATA_DIR = Path(os.environ.get("GRANTME_DIR", "/scratch/grantme"))
-DB_FILE = DATA_DIR / DB_FILENAME
+# looked up next to the launcher script, i.e., bin/grantme.conf
+CONF_FILENAME = "grantme.conf"
 
 
 def main():
     current_user = getuser()
+
+    # GRANTME_DIR overrides the config file (used by tests)
+    if "GRANTME_DIR" in os.environ:
+        data_dir = Path(os.environ["GRANTME_DIR"])
+    else:
+        conf_file = Path(os.path.realpath(sys.argv[0])).parent / CONF_FILENAME
+        data_dir = read_data_dir(conf_file, socket.gethostname().split(".")[0])
+    db_file = data_dir / DB_FILENAME
 
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -45,23 +55,23 @@ def main():
 
     if args.init:
         try:
-            create_db(DATA_DIR, DB_FILE)
+            create_db(data_dir, db_file)
         except Exception as err:
             error(
                 "Failed to initiate the database. Please ensure that you have write"
                 " permission for creating {db} file. To resolve corrupted"
                 " database files, you may remove {db} and then run"
-                " `{prog} --init` to create a new one.".format(db=DB_FILE, prog=PROG)
+                " `{prog} --init` to create a new one.".format(db=db_file, prog=PROG)
             )
             error("Original exception: {}".format(err))
             sys.exit(UNEXPECTED_ERROR_CODE)
-        ok("Database initiated at {}.".format(DB_FILE))
+        ok("Database initiated at {}.".format(db_file))
         sys.exit(0)
 
-    if not DB_FILE.exists():
+    if not db_file.exists():
         error(
             "Database {} does not exist. Please ask the maintainer to run"
-            " `{} --init`.".format(DB_FILE, PROG)
+            " `{} --init`.".format(db_file, PROG)
         )
         sys.exit(UNEXPECTED_ERROR_CODE)
 
@@ -69,7 +79,7 @@ def main():
     try:
         exit_code = 0
 
-        conn = sqlite3.connect(str(DB_FILE), detect_types=sqlite3.PARSE_DECLTYPES)
+        conn = sqlite3.connect(str(db_file), detect_types=sqlite3.PARSE_DECLTYPES)
         conn.row_factory = sqlite3.Row
         # hold the write lock from reading status to writing leases, so that
         # concurrent invocations cannot both pass the checks

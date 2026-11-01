@@ -1,0 +1,8 @@
+# Copy to bin/grantme.conf to configure where each machine keeps its database.
+# A section named after a host (short hostname) overrides [default].
+
+[default]
+data_dir = /scratch/grantme
+
+# [diascld28]
+# data_dir = /var/tmp/grantme

@@ -80,7 +80,8 @@ grantme --revoke
 #### Installation and uninstallation
 
 The maintainer clones this repository to a location readable by all users (denoted `<GRANTME_HOME>` below), updates it there with `git pull`, and runs `grantme --init` once on each machine to create the database.
-The database resides in `/scratch/grantme` by default (configurable via the `GRANTME_DIR` environment variable) and is readable and writable to all users.
+The database resides in `/scratch/grantme` by default and is readable and writable to all users.
+To place it elsewhere, copy `bin/grantme.conf.example` to `bin/grantme.conf` (untracked by git) and set `data_dir` under `[default]` or under a section named after a host to override that host only.
 
 ```shell
 git clone <REPO_URL> <GRANTME_HOME>
@@ -161,7 +162,7 @@ grantme --revoke
 
 #### 安装与卸载
 
-管理者将本仓库克隆到一个所有用户可读的位置（以下记为`<GRANTME_HOME>`），更新时在该处`git pull`即可，并在每台机器上运行一次`grantme --init`以创建数据库。数据库默认位于`/scratch/grantme`（可用环境变量`GRANTME_DIR`修改），对所有用户开放读写。
+管理者将本仓库克隆到一个所有用户可读的位置（以下记为`<GRANTME_HOME>`），更新时在该处`git pull`即可，并在每台机器上运行一次`grantme --init`以创建数据库。数据库默认位于`/scratch/grantme`，对所有用户开放读写。如需放在别处，将`bin/grantme.conf.example`复制为`bin/grantme.conf`（不纳入git），并在`[default]`节或以主机名命名的节（仅覆盖该主机）中设置`data_dir`。
 
 ```shell
 git clone <REPO_URL> <GRANTME_HOME>

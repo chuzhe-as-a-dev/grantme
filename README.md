@@ -3,31 +3,24 @@
 ```console
 $ grantme
 ################################################################################
-Neither exclusive nor shared access is granted yet.
-You can obtain shared access with
-        grantme --mode shared --duration ?d?h?m?s
-You can obtain exclusive access with
-        grantme --mode exclusive --duration ?d?h?m?s
+The machine is free.
+Get access with `grantme --mode {shared,exclusive} --duration ?d?h?m?s`.
 ################################################################################
 
-$ grantme --mode shared --duration 2m
-tang's shared permission is successfully granted.
-Your permission expires at 2026-11-01 14:29:23.485929.
+$ grantme --mode shared --duration 2h
+Granted shared access to tang until 2026-11-01 20:16 (2h left).
 
-$ grantme --mode exclusive --duration 10m
-Shared permission upgraded to an exclusive permission.
-Permission is successfully prolonged.
-Your permission expires at 2026-11-01 14:37:23.519734.
+$ grantme --mode exclusive --duration 3h
+Upgraded tang's access to exclusive until 2026-11-01 21:16 (3h left).
 
 $ grantme
 ################################################################################
-Exclusive access is granted to
-        tang (YOU),
-(the last of) which expires at 2026-11-01 14:37:23.519734.
+EXCLUSIVE access is held by:
+  tang (you)  until 2026-11-01 21:16 (3h left)
 ################################################################################
 
 $ grantme --revoke
-tang's exclusive permission is successfully revoked.
+Revoked tang's exclusive access.
 ```
 
 ## English

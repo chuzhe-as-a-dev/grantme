@@ -90,6 +90,7 @@ def slock_guide():
 
 
 def show_path_hint(bin_dir: str):
+    sys.stdout.flush()  # keep the hint after the output even when stdout is piped
     print(
         FormatCode.WARNING
         + "Hint: `grantme` is not in your PATH. Add it with:\n"

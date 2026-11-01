@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import atexit
 import os
 import shutil
 import socket
@@ -33,9 +34,10 @@ def main():
     current_user = getuser()
     bin_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
 
-    # not installed globally, so remind users who call it by its full path
+    # not installed globally, so remind users who call it by its full path; shown
+    # at exit so that it follows the actual output
     if shutil.which(PROG) is None:
-        show_path_hint(bin_dir)
+        atexit.register(show_path_hint, bin_dir)
 
     # GRANTME_DIR overrides the config file (used by tests)
     if "GRANTME_DIR" in os.environ:

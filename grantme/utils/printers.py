@@ -93,9 +93,8 @@ def show_path_hint(bin_dir: str):
     sys.stdout.flush()  # keep the hint after the output even when stdout is piped
     print(
         FormatCode.WARNING
-        + "Hint: `grantme` is not in your PATH. Add it with:\n"
-        + INDENT
-        + "echo 'export PATH=\"{}:$PATH\"' >> ~/.bashrc".format(bin_dir)
+        + "Hint: add grantme to your PATH by"
+        + " `echo 'export PATH=\"{}:$PATH\"' >> ~/.bashrc`".format(bin_dir)
         + FormatCode.ENDC,
         file=sys.stderr,
     )

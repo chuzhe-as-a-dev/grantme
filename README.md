@@ -88,17 +88,25 @@ git clone <REPO_URL> <GRANTME_HOME>
 <GRANTME_HOME>/bin/grantme --init  # once per machine
 ```
 
-Each user adds the following to `~/.bashrc` to use `grantme` and automatically print access status upon login:
+Each user adds the following to `~/.bashrc` to use `grantme`:
 
 ```shell
 export PATH="<GRANTME_HOME>/bin:$PATH"
-[ -t 1 ] && grantme --status
 ```
 
-To uninstall, remove `<GRANTME_HOME>`, the data directory, and the lines in each user's `~/.bashrc`:
+To automatically print access status upon login on Ubuntu, the system administrator links the update-motd fragment on each machine (requires root):
+
+```shell
+ln -s <GRANTME_HOME>/contrib/99-grantme /etc/update-motd.d/99-grantme
+```
+
+Without root, each user can instead add `[ -t 1 ] && grantme --status` to `~/.bashrc`.
+
+To uninstall, remove `<GRANTME_HOME>`, the data directory, `/etc/update-motd.d/99-grantme`, and the lines in each user's `~/.bashrc`:
 
 ```shell
 rm -rf <GRANTME_HOME> /scratch/grantme
+rm /etc/update-motd.d/99-grantme  # requires root
 ```
 
 ### Contribute
@@ -169,17 +177,25 @@ git clone <REPO_URL> <GRANTME_HOME>
 <GRANTME_HOME>/bin/grantme --init  # 每台机器一次
 ```
 
-每位用户在`~/.bashrc`中加入以下内容，以使用`grantme`并在登录时自动打印授权状态：
+每位用户在`~/.bashrc`中加入以下内容，以使用`grantme`：
 
 ```shell
 export PATH="<GRANTME_HOME>/bin:$PATH"
-[ -t 1 ] && grantme --status
 ```
 
-卸载时删除`<GRANTME_HOME>`、数据目录以及各用户`~/.bashrc`中的对应行：
+如需在Ubuntu上于用户登录时自动打印授权状态，由系统管理员在每台机器上链接update-motd脚本（需要root权限）：
+
+```shell
+ln -s <GRANTME_HOME>/contrib/99-grantme /etc/update-motd.d/99-grantme
+```
+
+若无root权限，也可由每位用户在`~/.bashrc`中加入`[ -t 1 ] && grantme --status`。
+
+卸载时删除`<GRANTME_HOME>`、数据目录、`/etc/update-motd.d/99-grantme`以及各用户`~/.bashrc`中的对应行：
 
 ```shell
 rm -rf <GRANTME_HOME> /scratch/grantme
+rm /etc/update-motd.d/99-grantme  # 需要root权限
 ```
 
 ### 参与开发

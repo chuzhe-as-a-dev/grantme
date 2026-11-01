@@ -1,0 +1,11 @@
+#!/bin/sh
+# update-motd fragment that prints grantme status upon login (Ubuntu).
+# Install as root by symlinking, so that it follows `git pull`:
+#   ln -s <GRANTME_HOME>/contrib/99-grantme /etc/update-motd.d/99-grantme
+
+GRANTME="$(dirname "$(readlink -f "$0")")/../bin/grantme"
+[ -x "$GRANTME" ] || exit 0
+
+echo
+# update-motd only shows stdout; the PATH hint on stderr is useful at login
+timeout 5 "$GRANTME" --status 2>&1

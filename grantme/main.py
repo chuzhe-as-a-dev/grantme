@@ -49,19 +49,19 @@ def main():
         except Exception as err:
             error(
                 "Failed to initiate the database. Please ensure that you have write"
-                f" permission for creating {DB_FILE} file. To resolve corrupted"
-                f" database files, you may remove {DB_FILE} and then run"
-                f" `{PROG} --init` to create a new one."
+                " permission for creating {db} file. To resolve corrupted"
+                " database files, you may remove {db} and then run"
+                " `{prog} --init` to create a new one.".format(db=DB_FILE, prog=PROG)
             )
-            error(f"Original exception: {err}")
+            error("Original exception: {}".format(err))
             sys.exit(UNEXPECTED_ERROR_CODE)
-        ok(f"Database initiated at {DB_FILE}.")
+        ok("Database initiated at {}.".format(DB_FILE))
         sys.exit(0)
 
     if not DB_FILE.exists():
         error(
-            f"Database {DB_FILE} does not exist. Please ask the maintainer to run"
-            f" `{PROG} --init`."
+            "Database {} does not exist. Please ask the maintainer to run"
+            " `{} --init`.".format(DB_FILE, PROG)
         )
         sys.exit(UNEXPECTED_ERROR_CODE)
 
@@ -92,7 +92,7 @@ def main():
         error(err.msg)
         exit_code = err.code
     except Exception as err:
-        error(f"Unexpected exception: {err}")
+        error("Unexpected exception: {}".format(err))
         print_tb(err.__traceback__)
         exit_code = UNEXPECTED_ERROR_CODE
     finally:

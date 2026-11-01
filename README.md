@@ -75,7 +75,7 @@ grantme --revoke
 
 #### Requirements
 
-`grantme` requires Python 3.7+, with no third-party dependencies and no root privilege.
+`grantme` requires Python 3.5+, with no third-party dependencies and no root privilege.
 
 #### Installation and uninstallation
 
@@ -157,7 +157,7 @@ grantme --revoke
 
 #### 依赖
 
-`grantme`要求Python 3.7及以上版本，无需安装第三方依赖，也无需root权限。
+`grantme`要求Python 3.5及以上版本，无需安装第三方依赖，也无需root权限。
 
 #### 安装与卸载
 

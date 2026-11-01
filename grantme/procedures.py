@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import sqlite3
-from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum, auto
+from enum import Enum
 from typing import Mapping, Optional
 
 from grantme.constants.msgs import *
@@ -13,28 +12,38 @@ from grantme.utils.errors import *
 from .utils import printers, timer
 
 
-# explicit replacements of the default adapter/converter deprecated in Python 3.12
-sqlite3.register_adapter(datetime, lambda dt: dt.isoformat(" "))
-sqlite3.register_converter("timestamp", lambda b: datetime.fromisoformat(b.decode()))
+# explicit replacements of the default adapter/converter deprecated in Python 3.12;
+# a fixed format keeps stored timestamps comparable as strings
+TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
+sqlite3.register_adapter(datetime, lambda dt: dt.strftime(TIMESTAMP_FORMAT))
+sqlite3.register_converter(
+    "timestamp", lambda b: datetime.strptime(b.decode(), TIMESTAMP_FORMAT)
+)
 
 
 class Mode(Enum):
-    EXCLUSIVE = auto()
-    SHARED = auto()
+    EXCLUSIVE = 1
+    SHARED = 2
 
 
-@dataclass
 class LockStatus:
-    mode: Mode
-    user_expires: Mapping[str, datetime]
+    def __init__(self, mode: Mode, user_expires: Mapping[str, datetime]):
+        self.mode = mode
+        self.user_expires = user_expires
 
 
-@dataclass
 class GrantResult:
-    curr_mode: Optional[Mode]
-    prev_mode: Optional[Mode]
-    curr_expire_at: Optional[datetime]
-    prev_expire_at: Optional[datetime]
+    def __init__(
+        self,
+        curr_mode: Optional[Mode],
+        prev_mode: Optional[Mode],
+        curr_expire_at: Optional[datetime],
+        prev_expire_at: Optional[datetime],
+    ):
+        self.curr_mode = curr_mode
+        self.prev_mode = prev_mode
+        self.curr_expire_at = curr_expire_at
+        self.prev_expire_at = prev_expire_at
 
 
 def write_lock(who: str, mode: Mode, expire_at: datetime, conn: sqlite3.Connection):

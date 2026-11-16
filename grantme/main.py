@@ -28,6 +28,9 @@ from grantme.utils.setup import create_db
 DB_FILENAME = "db.sqlite3"
 # looked up next to the launcher script, i.e., bin/grantme.conf
 CONF_FILENAME = "grantme.conf"
+# default data directory, relative to the repository root; its content is
+# untracked by git
+STATE_DIRNAME = "state"
 
 
 def main():
@@ -44,7 +47,11 @@ def main():
         data_dir = Path(os.environ["GRANTME_DIR"])
     else:
         conf_file = Path(bin_dir) / CONF_FILENAME
-        data_dir = read_data_dir(conf_file, socket.gethostname().split(".")[0])
+        data_dir = read_data_dir(
+            conf_file,
+            socket.gethostname().split(".")[0],
+            Path(bin_dir).parent / STATE_DIRNAME,
+        )
     db_file = data_dir / DB_FILENAME
 
     parser = argparse.ArgumentParser(

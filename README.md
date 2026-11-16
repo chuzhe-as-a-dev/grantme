@@ -73,7 +73,8 @@ grantme --revoke
 #### Installation and uninstallation
 
 The maintainer clones this repository to a location readable by all users (denoted `<GRANTME_HOME>` below), updates it there with `git pull`, and runs `grantme --init` once on each machine to create the database.
-The database resides in `/scratch/grantme` by default and is readable and writable to all users.
+The database resides in `<GRANTME_HOME>/state` by default (untracked by git) and is readable and writable to all users.
+Hence, `<GRANTME_HOME>` should be on a local disk of each machine rather than shared storage.
 To place it elsewhere, copy `bin/grantme.conf.example` to `bin/grantme.conf` (untracked by git) and set `data_dir` under `[default]` or under a section named after a host to override that host only.
 
 ```shell
@@ -95,10 +96,10 @@ ln -s <GRANTME_HOME>/contrib/99-grantme /etc/update-motd.d/99-grantme
 
 Without root, each user can instead add `[ -t 1 ] && grantme --status` to `~/.bashrc`.
 
-To uninstall, remove `<GRANTME_HOME>`, the data directory, `/etc/update-motd.d/99-grantme`, and the lines in each user's `~/.bashrc`:
+To uninstall, remove `<GRANTME_HOME>` (which includes the default data directory), `/etc/update-motd.d/99-grantme`, and the lines in each user's `~/.bashrc`:
 
 ```shell
-rm -rf <GRANTME_HOME> /scratch/grantme
+rm -rf <GRANTME_HOME>
 rm /etc/update-motd.d/99-grantme  # requires root
 ```
 
@@ -163,7 +164,7 @@ grantme --revoke
 
 #### 安装与卸载
 
-管理者将本仓库克隆到一个所有用户可读的位置（以下记为`<GRANTME_HOME>`），更新时在该处`git pull`即可，并在每台机器上运行一次`grantme --init`以创建数据库。数据库默认位于`/scratch/grantme`，对所有用户开放读写。如需放在别处，将`bin/grantme.conf.example`复制为`bin/grantme.conf`（不纳入git），并在`[default]`节或以主机名命名的节（仅覆盖该主机）中设置`data_dir`。
+管理者将本仓库克隆到一个所有用户可读的位置（以下记为`<GRANTME_HOME>`），更新时在该处`git pull`即可，并在每台机器上运行一次`grantme --init`以创建数据库。数据库默认位于`<GRANTME_HOME>/state`（不纳入git），对所有用户开放读写，因此`<GRANTME_HOME>`应位于每台机器的本地磁盘而非共享存储。如需放在别处，将`bin/grantme.conf.example`复制为`bin/grantme.conf`（不纳入git），并在`[default]`节或以主机名命名的节（仅覆盖该主机）中设置`data_dir`。
 
 ```shell
 git clone <REPO_URL> <GRANTME_HOME>
@@ -184,10 +185,10 @@ ln -s <GRANTME_HOME>/contrib/99-grantme /etc/update-motd.d/99-grantme
 
 若无root权限，也可由每位用户在`~/.bashrc`中加入`[ -t 1 ] && grantme --status`。
 
-卸载时删除`<GRANTME_HOME>`、数据目录、`/etc/update-motd.d/99-grantme`以及各用户`~/.bashrc`中的对应行：
+卸载时删除`<GRANTME_HOME>`（默认数据目录也在其中）、`/etc/update-motd.d/99-grantme`以及各用户`~/.bashrc`中的对应行：
 
 ```shell
-rm -rf <GRANTME_HOME> /scratch/grantme
+rm -rf <GRANTME_HOME>
 rm /etc/update-motd.d/99-grantme  # 需要root权限
 ```
 

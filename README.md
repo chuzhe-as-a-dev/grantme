@@ -103,12 +103,7 @@ rm -rf <GRANTME_HOME>
 rm /etc/update-motd.d/99-grantme  # requires root
 ```
 
-### Contribute
-
-Currently, `grantme` is maintained by an individual.
-Bug reports and pull requests are welcomed.
-
-#### Testing
+### Testing
 
 Execute the following command in the project's root directory to run tests.
 
@@ -116,8 +111,7 @@ Execute the following command in the project's root directory to run tests.
 python -m unittest discover
 ```
 
-Please add or modify test cases under the `tests` directory when adding new features or fixing bugs.
-Make sure all tests have passed before submitting pull requests.
+Add or modify test cases under the `tests` directory when adding new features or fixing bugs.
 
 ## 中文
 
@@ -192,11 +186,7 @@ rm -rf <GRANTME_HOME>
 rm /etc/update-motd.d/99-grantme  # 需要root权限
 ```
 
-### 参与开发
-
-目前，`grantme`由个人维护。欢迎用户提交缺陷报告和Pull Request。
-
-#### 测试
+### 测试
 
 在项目根目录下执行以下命令以运行测试。
 
@@ -204,4 +194,4 @@ rm /etc/update-motd.d/99-grantme  # 需要root权限
 python -m unittest discover
 ```
 
-增加新功能、修补漏洞后请在`tests`目录下增加或修改相应测试。在所有测试通过后提交Pull Request。
+增加新功能、修补漏洞后请在`tests`目录下增加或修改相应测试。
